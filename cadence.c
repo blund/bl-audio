@@ -3,12 +3,17 @@
   Cadence Audio Engine
   May 2024, Roma, Italy
   Børge Lundsaunet
- */
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <alsa/asoundlib.h>
 #include <math.h>
+
+
+void no_optimize(void* p) {
+  asm volatile ("" : : "g"(p) : "memory");
+}
 
 typedef struct audio_info {
   int rc;
@@ -23,7 +28,7 @@ typedef struct audio_info {
 
 
 #define num_tracks 4
-#define track_size 512
+#define track_size 256
 #define channels_pr_track 2
 
 typedef struct audio {
@@ -37,37 +42,47 @@ void audio_cleanup(audio_info* a);
 void audio_play_buffer(audio_info* a);
 
 
+
+float sigmoid(float x) {
+  x *= 0.1;
+  return 1 / ( 1+exp(-x*5.2f));
+}
+
 // declare global audio a so we don't have to pass it around :)
 audio* a;
 
+void write_to_track(int n, int i, float sample) {
+  a->tracks[n][2*i]   = sample;
+  a->tracks[n][2*i+1] = sample;
+}
+
 // -- sine --
 typedef struct sine {
-  float t;
-  float freq;
-  float volume;
+  double t;
 } sine;
 
 sine* new_sine(float freq, float volume) {
   sine* s = (sine*)malloc(sizeof(sine)); // @NOTE - hardcoded max buffer size
   s->t = 0;
-  s->freq = freq;
-  s->volume = volume;
   return s;
 }
 
-float gen_sine(sine* sine) {
-  float   wave_period = a->info.sample_rate / sine->freq;
-  float   sample      = sine->volume * sinf(sine->t);
+float gen_sine(sine* sine, float freq, float volume) {
+  float   wave_period = a->info.sample_rate / freq;
+  float   sample      = volume * sin(sine->t);
 
   sine->t += 2.0f * M_PI * 1.0f / wave_period;
+
+  //if (sine->t > 2.0f*3.14159) sine->t = 0.0;
+  sine->t = fmod(sine->t, 2.0f*M_PI);
   return sample;
 }
 
 
 // -- phasor --
 typedef struct phasor {
-  float freq;
-  float value;
+  double freq;
+  double value;
 } phasor;
 
 phasor* new_phasor(float freq) {
@@ -79,11 +94,13 @@ phasor* new_phasor(float freq) {
 
 float gen_phasor(phasor* p) {
   double diff =  (double)p->freq / (double)a->info.sample_rate;
-  p->value = (double)p->value + diff;
-
-  if (p->value >= 1.0f) p->value = -1.0f;
-
+  p->value += diff;
+  p->value = fmod(p->value, 1.0f);
   return p->value;
+}
+
+float apply_amp(float amp, float sample) {
+  return amp * sample;
 }
 
 
@@ -120,58 +137,63 @@ float apply_delay(delay* d, float sample) {
 
   // increment delay
   d->write_head++;
-  return delayed;
-}
-
-void write_to_track(int n, int i, float pan, float sample) {
-  a->tracks[n][2*i]   = pan * sample;
-  a->tracks[n][2*i+1] = (1-pan) * sample;
+  return sample + delayed*d->feedback;
 }
 
 
-int main() {
+int main(int argc, char** argv) {
+
+  int perf_mode = 0;
+  if (argc == 2) {
+    printf("argv: %s\n", argv[1]);
+    perf_mode = 1;
+  }
+
   printf("cadence audio engine v0.1\n");
 
-  audio_setup(&a);
- 
-  sine* s1  = new_sine(330, 0.1);
-  sine* s2  = new_sine(440, 0.1);
+  if (!perf_mode) {
+    audio_setup(&a);
+  } else {
+    a = malloc(sizeof(audio));
+    a->info.sample_rate = 44100;
+    a->info.frames = 256;
+    a->info.buffer = malloc(512*2*sizeof(int16_t));
+  }
+    sine* s1  = new_sine(330, 0.3);
+    sine* s2  = new_sine(440, 0.3);
 
-  phasor* p1 = new_phasor(330);
-  phasor* p2 = new_phasor(331);
+    phasor* p1 = new_phasor(0.1);
 
-  delay* d1  = new_delay(0.5, 0.3);
-  delay* d2  = new_delay(0.3, 0.3);
+    delay* d1  = new_delay(0.4, 0.6);
+    delay* d2  = new_delay(0.3, 0.6);
 
+  for (int j = 0; j < 1024*128; j++) {
 
-  printf("%ld\n", a->info.frames);
-  for (int j = 0; j < 1024*4; j++) {
-    // do processing pr sample pr frame
+    // @NOTE - each function handles the entire frame
     for (int i = 0; i < a->info.frames; i++) {
-      if (1)
       {
-	float sample  = gen_sine(s1);
+	float mod = gen_phasor(p1);
+
+	float sample = gen_sine(s1, 440 + mod*80.0f, 0.3);
+	sample *= 0.5;
 	float delayed = apply_delay(d1, sample);
-	write_to_track(0,i, 0.5, sample + delayed);
+	write_to_track(0, i, sample + delayed);
       }
 
-      if (1) {
-	float sample  = gen_sine(s2);
-	float delayed = apply_delay(d2, sample);
-	write_to_track(1,i, 0.5, sample + delayed);
+      {
+	//float sample = gen_sine(s2);
+	//sample *= 0.5;
+	//float delayed = apply_delay(d2, sample);
+	//write_to_track(1, i, sample+delayed);
       }
-      
-      if (1) {
+      {
 	float sample = gen_phasor(p1);
-	write_to_track(2,i, 0.0, 0.05*sample);
-      }
-
-      if (1) {
-	float sample = gen_phasor(p2);
-	write_to_track(3,i, 1.0, 0.05*sample);
+	sample *= 0.05;
+	//write_to_track(2, i, sample);
       }
     }
-    
+
+
     // mix tracks
     // for every sample in each frame..
     for (int i = 0; i < a->info.frames; i++) {
@@ -190,16 +212,15 @@ int main() {
     }
 
     // buffer playback
-    audio_play_buffer(&a->info);
+    if (!perf_mode) audio_play_buffer(&a->info);
   }
 
   // cleanup
-  audio_cleanup(&a->info);
+  if (!perf_mode) audio_cleanup(&a->info);
 }
 
 
 void audio_setup(audio** a) {
-
   *a = malloc(sizeof(audio));
 
   // clear out channel buffers
@@ -216,7 +237,7 @@ void audio_setup(audio** a) {
   snd_pcm_sw_params_t *sw=NULL;
   unsigned int sample_rate = 44100;
   int dir;
-  snd_pcm_uframes_t frames = 256;
+  snd_pcm_uframes_t frames = track_size/2;
   int16_t *buffer;
   int buffer_size;
     
