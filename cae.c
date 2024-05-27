@@ -1,4 +1,9 @@
 
+/*
+  Cadence Audio Engine
+  May 2024, Roma, Italy
+  Børge Lundsaunet
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,7 +23,7 @@ typedef struct audio_info {
 
 
 #define num_tracks 4
-#define track_size 128
+#define track_size 256
 #define channels_pr_track 2
 
 typedef struct audio {
@@ -139,7 +144,8 @@ int main() {
   delay* d2  = new_delay(0.3, 0.3);
 
 
-  for (int j = 0; j < 1024*8; j++) {
+  printf("%ld\n", a->info.frames);
+  for (int j = 0; j < 1024*4; j++) {
     // do processing pr sample pr frame
     for (int i = 0; i < a->info.frames; i++) {
       if (1)
@@ -206,10 +212,11 @@ void audio_setup(audio** a) {
 
   int rc;
   snd_pcm_t *handle;
-  snd_pcm_hw_params_t *params;
+  snd_pcm_hw_params_t *params=NULL;
+  snd_pcm_sw_params_t *sw=NULL;
   unsigned int sample_rate = 44100;
   int dir;
-  snd_pcm_uframes_t frames = 64;
+  snd_pcm_uframes_t frames = 128;
   int16_t *buffer;
   int buffer_size;
     
@@ -240,7 +247,7 @@ void audio_setup(audio** a) {
   // 44100 bits/second sampling rate (CD quality)
   snd_pcm_hw_params_set_rate_near(handle, params, &sample_rate, &dir);
 
-  // Set period size to 32 frames.
+  // Set period size to 64 frames.
   snd_pcm_hw_params_set_period_size_near(handle, params, &frames, &dir);
 
   // Write the parameters to the driver
@@ -249,6 +256,19 @@ void audio_setup(audio** a) {
     fprintf(stderr, "unable to set hw parameters: %s\n", snd_strerror(rc));
     exit(1);
   }
+
+  // allocate software params
+  snd_pcm_sw_params_alloca(&sw);
+  snd_pcm_sw_params_current(handle, sw);
+
+  // start playing after the first write
+  snd_pcm_sw_params_set_start_threshold(handle, sw, 1);
+
+  // wake up on every interrupt
+  snd_pcm_sw_params_set_avail_min(handle, sw, 1);
+
+  // write config to driver
+  snd_pcm_sw_params(handle, sw);
 
   // Use a buffer large enough to hold one period
   snd_pcm_hw_params_get_period_size(params, &frames, &dir);
