@@ -3,19 +3,32 @@
 #include "synth.h"
 
 
-void synth_register_note(synth* s, float freq, float amp, int len_samples) {
-  puts("registering!");
-  fori(s->poly_count) {
-    note* n = &s->notes[i];
-    if (n->free) {
-      n->free = 0;
-      n->freq = freq;
-      n->amp = amp;
-      n->len_samples = len_samples;
-      n->reset = 1;
-      break;
+void synth_register_note(synth* s, float freq, float amp, note_event event ) {
+  if (event == NOTE_ON) {
+    fori(s->poly_count) {
+      note* n = &s->notes[i];
+      if (n->free) {
+	n->free = 0;
+	n->freq = freq;
+	n->amp = amp;
+	n->reset = 1;
+	n->end = 0;
+	break;
+      }
     }
   }
+
+  if (event == NOTE_OFF) {
+    fori(s->poly_count) {
+      note* n = &s->notes[i];
+      if (n->freq == freq) {
+	n->free = 1;
+	n->end = 1;
+	break;
+      }
+    }
+  }
+
 }
 
 float synth_play(synth* s) {

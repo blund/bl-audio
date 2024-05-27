@@ -186,15 +186,27 @@ int main(int argc, char** argv) {
     clock_t begin = clock(); // to time how long it takes to render sound
 
     if (j == 0) {
-      synth_register_note(s, 440.0f, 0.1, 44100);
+      synth_register_note(s, 440.0f, 0.1, NOTE_ON);
     }
     if (j == 100) {
-      synth_register_note(s, 660.0f, 0.1, 44100);
+      synth_register_note(s, 660.0f, 0.1, NOTE_ON);
     }
 
     if (j == 200) {
-      synth_register_note(s, 880.0f, 0.1, 44100);
+      synth_register_note(s, 880.0f, 0.1, NOTE_ON);
     }
+
+    if (j == 600) {
+      synth_register_note(s, 440.0f, 0.1, NOTE_OFF);
+    }
+    if (j == 700) {
+      synth_register_note(s, 660.0f, 0.1, NOTE_OFF);
+    }
+
+    if (j == 800) {
+      synth_register_note(s, 880.0f, 0.1, NOTE_OFF);
+    }
+
     
     for (int i = 0; i < a->info.frames; i++) {
       float sample = synth_play(s);
@@ -206,7 +218,7 @@ int main(int argc, char** argv) {
 
 	float sample = gen_sine(s1, 440 + mod, 0.3);
 	sample *= 0.5;
-	write_to_track(0, i, sample + delayed);
+	//write_to_track(0, i, sample + delayed);
       }
 
       {
