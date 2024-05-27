@@ -54,9 +54,3 @@ synth* new_synth(int poly_count, float(*osc)(float, float, int, int*)) {
   }
   return s;
 }
-
-float osc(float freq, int note_index, int* reset) {
-  int amp[8] = {1, 10, 100};
-  if (*reset) puts("reset!");
-  return amp[note_index];
-}
