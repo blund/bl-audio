@@ -1,7 +1,7 @@
 
 /*
   Cadence Audio Engine
-  May 2024, Roma, Italy
+  May 2024
   Børge Lundsaunet
 */
 
@@ -164,8 +164,6 @@ int main(int argc, char** argv) {
     perf_mode = 1;
   }
 
-  printf("cadence audio engine v0.1\n");
-
   if (!perf_mode) {
     audio_setup(&a);
   } else {
@@ -175,66 +173,24 @@ int main(int argc, char** argv) {
     a->info.buffer = malloc(512*2*sizeof(int16_t));
   }
 
-  sine* s1 = new_sine();
-  sine* s2 = new_sine();
   delay* d1 = new_delay();
-
-  synth* s = new_synth(8, test_osc);
+  synth* s  = new_synth(8, test_osc);
 
   //printf("%d\n", a->info.frames);
   for (int j = 0; j < 1024*8; j++) {
-    clock_t begin = clock(); // to time how long it takes to render sound
-
-    if (j == 0) {
-      synth_register_note(s, 440.0f, 0.1, NOTE_ON);
-    }
-    if (j == 100) {
-      synth_register_note(s, 660.0f, 0.1, NOTE_ON);
-    }
-
-    if (j == 200) {
-      synth_register_note(s, 880.0f, 0.1, NOTE_ON);
-    }
-
-    if (j == 600) {
-      synth_register_note(s, 440.0f, 0.1, NOTE_OFF);
-    }
-    if (j == 700) {
-      synth_register_note(s, 660.0f, 0.1, NOTE_OFF);
-    }
-
-    if (j == 800) {
-      synth_register_note(s, 880.0f, 0.1, NOTE_OFF);
-    }
-
+    if (j == 0)   synth_register_note(s, 440.0f, 0.1, NOTE_ON);
+    if (j == 100) synth_register_note(s, 660.0f, 0.1, NOTE_ON);
+    if (j == 200) synth_register_note(s, 880.0f, 0.1, NOTE_ON);
+    if (j == 600) synth_register_note(s, 440.0f, 0.1, NOTE_OFF);
+    if (j == 700) synth_register_note(s, 660.0f, 0.1, NOTE_OFF);
+    if (j == 800) synth_register_note(s, 880.0f, 0.1, NOTE_OFF);
     
     for (int i = 0; i < a->info.frames; i++) {
       float sample = synth_play(s);
       float delayed = apply_delay(d1, sample, 0.3, 0.6);
       write_to_track(0, i, sample + delayed);
-
-      {
-	float mod = gen_sine(s2, 0.5, 80.0f);
-
-	float sample = gen_sine(s1, 440 + mod, 0.3);
-	sample *= 0.5;
-	//write_to_track(0, i, sample + delayed);
-      }
-
-      {
-	//float sample = gen_sine(s1, 440.0f, 0.3);
-	//write_to_track(0, i, sample);
-      }
     }
  
-
-    // end render timer
-    clock_t end = clock();
-    double render_time = (double)(end - begin) / CLOCKS_PER_SEC;
-
-    // begin playback timer
-    begin = clock();
-
     // mix tracks
     // for every sample in each frame..
     for (int i = 0; i < a->info.frames; i++) {
@@ -254,18 +210,6 @@ int main(int argc, char** argv) {
 
     // buffer playback
     if (!perf_mode) audio_play_buffer(&a->info);
-
-    // end playback timer
-    end = clock();
-    double play_time = (double)(end - begin) / CLOCKS_PER_SEC;
-
-    // display timer infos
-    double max_time = ((double)track_size/2/(double)44100);
-    //printf("total:              %f\n", max_time);
-    //("finish render sound %f\n", render_time);
-    //("finish play sound   %f\n", play_time);
-    //("remaining:          %f\n\n", max_time-render_time-play_time);
-    assert(max_time-render_time-play_time> 0.0f);
   }
 
   // cleanup
