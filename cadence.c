@@ -39,13 +39,6 @@ void audio_setup(audio** a);
 void audio_cleanup(audio_info* a);
 void audio_play_buffer(audio_info* a);
 
-
-
-float sigmoid(float x) {
-  x *= 0.1;
-  return 1 / ( 1+exp(-x*5.2f));
-}
-
 // declare global audio a so we don't have to pass it around :)
 audio* a;
 
@@ -94,14 +87,9 @@ float gen_phasor(phasor* p, float freq) {
   return p->value;
 }
 
-float apply_amp(float amp, float sample) {
-  return amp * sample;
-}
-
-
 // -- delay --
 typedef struct delay {
-  float    buffer[10*44100];
+  float*   buffer;
   uint32_t buf_size;
   uint32_t write_head;
   uint32_t read_offset;
@@ -109,7 +97,8 @@ typedef struct delay {
 
 delay* new_delay() {
   delay* d = (delay*)malloc(sizeof(delay)); // @NOTE - hardcoded max buffer size
-  d->buf_size = 10*44100;
+  d->buf_size = 10*a->info.sample_rate;
+  d->buffer = malloc(d->buf_size * sizeof(float));
 
   // clear out buffer @NOTE - might be unecessary
   for (int i = 0; i < d->buf_size; i++) {
@@ -119,7 +108,7 @@ delay* new_delay() {
 }
 
 float apply_delay(delay* d, float sample, float delay_ms, float feedback) {
-  d->read_offset = delay_ms * 44100; // @NOTE - hardcoded samplerate
+  d->read_offset = delay_ms * a->info.sample_rate; // @NOTE - hardcoded samplerate
   // read from delay buffer
   uint32_t index = (d->write_head - d->read_offset) % d->buf_size;
   float delayed  = d->buffer[index];
