@@ -17,12 +17,13 @@ typedef struct audio_info {
 } audio_info;
 
 
-#define num_channels 4
-#define channel_size 64
+#define num_tracks 4
+#define track_size 64
+#define channels_pr_track 2
 
 typedef struct audio {
   audio_info info;
-  float channels[num_channels][channel_size];
+  float tracks[num_tracks][channels_pr_track*track_size];
 } audio;
 
 
@@ -123,55 +124,62 @@ int main() {
 
   audio_setup(&a);
  
-  sine* s1 = new_sine(330, 0.1);
-  sine* s2 = new_sine(440, 0.1);
+  sine* s1  = new_sine(330, 0.1);
+  sine* s2  = new_sine(440, 0.1);
 
   phasor* p1 = new_phasor(330);
   phasor* p2 = new_phasor(331);
 
-  delay* d1 = new_delay(0.5, 0.3);
-  delay* d2 = new_delay(0.3, 0.3);
+  delay* d1  = new_delay(0.5, 0.3);
+  delay* d2  = new_delay(0.3, 0.3);
 
 
   for (int j = 0; j < 1024*8; j++) {
     // do processing pr sample pr frame
     for (int i = 0; i < a->info.frames; i++) {
-      if (j >= 1024)
+      if (1)
       {
 	float sample  = gen_sine(s1);
 	float delayed = apply_delay(d1, sample);
-	a->channels[0][i] = sample + delayed;
+	a->tracks[0][2*i] = sample + delayed;
+	a->tracks[0][2*i+1] = sample + delayed;
       }
 
       if (1) {
 	float sample  = gen_sine(s2);
 	float delayed = apply_delay(d2, sample);
-	a->channels[1][i] = sample + delayed;
+	a->tracks[1][2*i] = sample + delayed;
+	a->tracks[1][2*i+1] = sample + delayed;
       }
       
       if (1) {
 	float sample1 = gen_phasor(p1);
-	a->channels[2][i] = 0.05*sample1;
+	a->tracks[2][2*i] = 0.05*sample1;
+	a->tracks[2][2*i+1] = 0.05*sample1;
       }
 
       if (1) {
 	float sample = gen_phasor(p2);
-	a->channels[3][i] = 0.05*sample;
+	a->tracks[3][2*i] = 0.05*sample;
+	a->tracks[3][2*i+1] = 0.05*sample;
       }
     }
     
-    // mix channels
+    // mix tracks
     // for every sample in each frame..
     for (int i = 0; i < a->info.frames; i++) {
 
-      float sample = 0;
+      float sample_l = 0;
+      float sample_r = 0;
       // ...sum up each channel :)
-      for (int n = 0; n < num_channels; n++) {
-	sample += a->channels[n][i];
+      for (int n = 0; n < num_tracks; n++) {
+	sample_l += a->tracks[n][2*i];
+	sample_r += a->tracks[n][2*i+1];
       }
 
       // sample to 16 bit int and copy to alsa buffer
-      a->info.buffer[i] = (int16_t)(32768.0f * sample);
+      a->info.buffer[2*i] = (int16_t)(32768.0f * sample_l);
+      a->info.buffer[2*i+1] = (int16_t)(32768.0f * sample_r);
     }
 
     // buffer playback
@@ -188,9 +196,9 @@ void audio_setup(audio** a) {
   *a = malloc(sizeof(audio));
 
   // clear out channel buffers
-  for (int n = 0; n < num_channels; n++) {
-    for (int s = 0; s < channel_size; s++) {
-      (*a)->channels[n][s] = 0;
+  for (int n = 0; n < num_tracks; n++) {
+    for (int s = 0; s < track_size; s++) {
+      (*a)->tracks[n][s] = 0;
     }
   }
  
@@ -225,8 +233,8 @@ void audio_setup(audio** a) {
   // Signed 16-bit little-endian format
   snd_pcm_hw_params_set_format(handle, params, SND_PCM_FORMAT_S16_LE);
 
-  // Two channels (stereo)
-  snd_pcm_hw_params_set_channels(handle, params, 1);
+  // Two tracks (stereo)
+  snd_pcm_hw_params_set_channels(handle, params, 2);
 
   // 44100 bits/second sampling rate (CD quality)
   snd_pcm_hw_params_set_rate_near(handle, params, &sample_rate, &dir);
@@ -243,7 +251,7 @@ void audio_setup(audio** a) {
 
   // Use a buffer large enough to hold one period
   snd_pcm_hw_params_get_period_size(params, &frames, &dir);
-  buffer_size = frames; // 2 bytes/sample, 2 channels
+  buffer_size = frames*2; // 2 bytes/sample, 2 tracks
   buffer = (int16_t *)malloc(buffer_size*sizeof(int16_t));
 
   for (int i = 0; i < buffer_size; i++) {
