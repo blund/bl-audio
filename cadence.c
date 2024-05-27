@@ -90,7 +90,7 @@ phasor* new_phasor(float freq) {
 float gen_phasor(phasor* p) {
   double diff =  (double)p->freq / (double)a->info.sample_rate;
   p->value += diff;
-  p->value = fmod(p->value, 1.0f);
+  if (p->value > 1.0f) p->value -= 2.0f;
   return p->value;
 }
 
@@ -158,6 +158,7 @@ int main(int argc, char** argv) {
     sine* s2  = new_sine(440, 0.3);
 
     phasor* p1 = new_phasor(0.1);
+    phasor* p2 = new_phasor(440);
 
     delay* d1  = new_delay(0.4, 0.6);
     delay* d2  = new_delay(0.3, 0.6);
@@ -172,19 +173,13 @@ int main(int argc, char** argv) {
 	float sample = gen_sine(s1, 440 + mod*80.0f, 0.3);
 	sample *= 0.5;
 	float delayed = apply_delay(d1, sample);
-	write_to_track(0, i, sample + delayed);
+	//write_to_track(0, i, sample + delayed);
       }
 
       {
-	//float sample = gen_sine(s2);
-	//sample *= 0.5;
-	//float delayed = apply_delay(d2, sample);
-	//write_to_track(1, i, sample+delayed);
-      }
-      {
-	float sample = gen_phasor(p1);
-	sample *= 0.05;
-	//write_to_track(2, i, sample);
+	float sample = gen_phasor(p2);
+	sample *= 0.1;
+	write_to_track(1, i, sample);
       }
     }
 
