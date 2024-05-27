@@ -23,7 +23,7 @@ typedef struct audio_info {
 
 
 #define num_tracks 4
-#define track_size 256
+#define track_size 512
 #define channels_pr_track 2
 
 typedef struct audio {
@@ -130,7 +130,7 @@ void write_to_track(int n, int i, float pan, float sample) {
 
 
 int main() {
-  printf("cadence audio engine v. 0.1\n");
+  printf("cadence audio engine v0.1\n");
 
   audio_setup(&a);
  
@@ -216,7 +216,7 @@ void audio_setup(audio** a) {
   snd_pcm_sw_params_t *sw=NULL;
   unsigned int sample_rate = 44100;
   int dir;
-  snd_pcm_uframes_t frames = 128;
+  snd_pcm_uframes_t frames = 256;
   int16_t *buffer;
   int buffer_size;
     
