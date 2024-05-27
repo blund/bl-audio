@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <alsa/asoundlib.h>
 #include <math.h>
+#include <time.h>
 
 typedef struct audio_info {
   int rc;
@@ -23,7 +24,7 @@ typedef struct audio_info {
 
 
 #define num_tracks 4
-#define track_size 256
+#define track_size 128
 #define channels_pr_track 2
 
 typedef struct audio {
@@ -56,7 +57,7 @@ typedef struct sine {
   double t;
 } sine;
 
-sine* new_sine(float freq, float volume) {
+sine* new_sine() {
   sine* s = (sine*)malloc(sizeof(sine)); // @NOTE - hardcoded max buffer size
   s->t = 0;
   return s;
@@ -68,7 +69,6 @@ float gen_sine(sine* sine, float freq, float volume) {
 
   sine->t += 2.0f * M_PI * 1.0f / wave_period;
 
-  //if (sine->t > 2.0f*3.14159) sine->t = 0.0;
   sine->t = fmod(sine->t, 2.0f*M_PI);
   return sample;
 }
@@ -154,35 +154,46 @@ int main(int argc, char** argv) {
     a->info.frames = 256;
     a->info.buffer = malloc(512*2*sizeof(int16_t));
   }
-    sine* s1  = new_sine(330, 0.3);
-    sine* s2  = new_sine(440, 0.3);
+  sine* s1  = new_sine();
+  sine* s2  = new_sine();
+  sine* s3  = new_sine();
 
-    phasor* p1 = new_phasor(0.1);
-    phasor* p2 = new_phasor(440);
+  phasor* p1 = new_phasor(330);
+  phasor* p2 = new_phasor(330);
+  phasor* p3 = new_phasor(330);
 
-    delay* d1  = new_delay(0.4, 0.6);
-    delay* d2  = new_delay(0.3, 0.6);
+  delay* d1  = new_delay(0.4, 0.7);
+  delay* d2  = new_delay(0.3, 0.6);
 
-  for (int j = 0; j < 1024*128; j++) {
 
-    // @NOTE - each function handles the entire frame
+  printf("%d\n", a->info.frames);
+  for (int j = 0; j < 1024*8; j++) {
+    clock_t begin = clock(); // to time how long it takes to render sound
+
     for (int i = 0; i < a->info.frames; i++) {
       {
-	float mod = gen_phasor(p1);
+	float mod = gen_sine(s2, 8.0, 80.0f);
 
-	float sample = gen_sine(s1, 440 + mod*80.0f, 0.3);
+	float sample = gen_sine(s1, 440 + mod, 0.3);
 	sample *= 0.5;
 	float delayed = apply_delay(d1, sample);
-	//write_to_track(0, i, sample + delayed);
+	write_to_track(0, i, sample + delayed);
       }
 
       {
-	float sample = gen_phasor(p2);
+	float sample = gen_phasor(p3);
 	sample *= 0.1;
-	write_to_track(1, i, sample);
+	//write_to_track(2, i, sample);
       }
     }
+ 
 
+    // end render timer
+    clock_t end = clock();
+    double render_time = (double)(end - begin) / CLOCKS_PER_SEC;
+
+    // begin playback timer
+    begin = clock();
 
     // mix tracks
     // for every sample in each frame..
@@ -203,6 +214,18 @@ int main(int argc, char** argv) {
 
     // buffer playback
     if (!perf_mode) audio_play_buffer(&a->info);
+
+    // end playback timer
+    end = clock();
+    double play_time = (double)(end - begin) / CLOCKS_PER_SEC;
+
+    // display timer infos
+    double max_time = ((double)track_size/2/(double)44100);
+    printf("total:              %f\n", max_time);
+    printf("finish render sound %f\n", render_time);
+    printf("finish play sound   %f\n", play_time);
+    printf("remaining:          %f\n\n", max_time-render_time-play_time);
+    assert(max_time-render_time-play_time> 0.0f);
   }
 
   // cleanup
@@ -227,7 +250,7 @@ void audio_setup(audio** a) {
   snd_pcm_sw_params_t *sw=NULL;
   unsigned int sample_rate = 44100;
   int dir;
-  snd_pcm_uframes_t frames = track_size/2;
+  snd_pcm_uframes_t frames = track_size/2-1;
   int16_t *buffer;
   int buffer_size;
     
