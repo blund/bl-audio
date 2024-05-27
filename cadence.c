@@ -10,11 +10,6 @@
 #include <alsa/asoundlib.h>
 #include <math.h>
 
-
-void no_optimize(void* p) {
-  asm volatile ("" : : "g"(p) : "memory");
-}
-
 typedef struct audio_info {
   int rc;
   snd_pcm_t *handle;
