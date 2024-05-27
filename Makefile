@@ -1,5 +1,4 @@
 
 
 cadence:
-	gcc cadence.c -O2 -g -lasound -lm -o cadence
-
+	gcc cadence.c synth.c -g -lasound -lm -o cadence

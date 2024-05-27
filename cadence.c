@@ -11,6 +11,8 @@
 #include <math.h>
 #include <time.h>
 
+#include "synth.h"
+
 typedef struct audio_info {
   int rc;
   snd_pcm_t *handle;
@@ -76,21 +78,19 @@ float gen_sine(sine* sine, float freq, float volume) {
 
 // -- phasor --
 typedef struct phasor {
-  double freq;
   double value;
 } phasor;
 
-phasor* new_phasor(float freq) {
+phasor* new_phasor() {
   phasor* p = (phasor*)malloc(sizeof(phasor)); // @NOTE - hardcoded max buffer size
-  p->freq = freq;
   p->value = 0;
   return p;
 }
 
-float gen_phasor(phasor* p) {
-  double diff =  (double)p->freq / (double)a->info.sample_rate;
+float gen_phasor(phasor* p, float freq) {
+  double diff =  (double)freq / (double)a->info.sample_rate;
   p->value += diff;
-  if (p->value > 1.0f) p->value -= 2.0f;
+  if (p->value > 1.0f) p->value -= 1.0f;
   return p->value;
 }
 
@@ -105,10 +105,9 @@ typedef struct delay {
   uint32_t buf_size;
   uint32_t write_head;
   uint32_t read_offset;
-  float    feedback;
 } delay;
 
-delay* new_delay(float delay_ms, float feedback) {
+delay* new_delay() {
   delay* d = (delay*)malloc(sizeof(delay)); // @NOTE - hardcoded max buffer size
   d->buf_size = 10*44100;
 
@@ -116,25 +115,46 @@ delay* new_delay(float delay_ms, float feedback) {
   for (int i = 0; i < d->buf_size; i++) {
     d->buffer[i] = 0;
   }
-
-  d->read_offset = delay_ms * 44100; // @NOTE - hardcoded samplerate
-  d->feedback = feedback;
   return d;
 }
 
-float apply_delay(delay* d, float sample) {
+float apply_delay(delay* d, float sample, float delay_ms, float feedback) {
+  d->read_offset = delay_ms * 44100; // @NOTE - hardcoded samplerate
   // read from delay buffer
   uint32_t index = (d->write_head - d->read_offset) % d->buf_size;
   float delayed  = d->buffer[index];
 
   // write back + feedback!
-  d->buffer[d->write_head % d->buf_size] = sample + delayed * d->feedback;
+  d->buffer[d->write_head % d->buf_size] = sample + delayed * feedback;
 
   // increment delay
   d->write_head++;
-  return sample + delayed*d->feedback;
+  return delayed;
 }
 
+
+float test_osc(float freq, float amp, int index, int* reset) {
+  static sine* sines[4];
+  static phasor* phasors[4];
+  static int init = 0;
+  if (!init) {
+    init = 1;
+    fori(4) sines[i] = new_sine();
+    fori(4) phasors[i] = new_phasor();
+  }
+
+  if (*reset) {
+    sines[index]->t = 0;
+    phasors[index]->value = 0;
+    *reset = 0;
+  }
+
+  float phase = gen_phasor(phasors[index], 1.0f);
+  amp *= 1.0f-phase;
+  
+  float sample = gen_sine(sines[index], freq, amp);
+  return sample;
+}
 
 int main(int argc, char** argv) {
 
@@ -154,36 +174,44 @@ int main(int argc, char** argv) {
     a->info.frames = 256;
     a->info.buffer = malloc(512*2*sizeof(int16_t));
   }
-  sine* s1  = new_sine();
-  sine* s2  = new_sine();
-  sine* s3  = new_sine();
 
-  phasor* p1 = new_phasor(330);
-  phasor* p2 = new_phasor(330);
-  phasor* p3 = new_phasor(330);
+  sine* s1 = new_sine();
+  sine* s2 = new_sine();
+  delay* d1 = new_delay();
 
-  delay* d1  = new_delay(0.4, 0.7);
-  delay* d2  = new_delay(0.3, 0.6);
+  synth* s = new_synth(8, test_osc);
 
-
-  printf("%d\n", a->info.frames);
+  //printf("%d\n", a->info.frames);
   for (int j = 0; j < 1024*8; j++) {
     clock_t begin = clock(); // to time how long it takes to render sound
 
+    if (j == 0) {
+      synth_register_note(s, 440.0f, 0.1, 44100);
+    }
+    if (j == 100) {
+      synth_register_note(s, 660.0f, 0.1, 44100);
+    }
+
+    if (j == 200) {
+      synth_register_note(s, 880.0f, 0.1, 44100);
+    }
+    
     for (int i = 0; i < a->info.frames; i++) {
+      float sample = synth_play(s);
+      float delayed = apply_delay(d1, sample, 0.3, 0.6);
+      write_to_track(0, i, sample + delayed);
+
       {
-	float mod = gen_sine(s2, 8.0, 80.0f);
+	float mod = gen_sine(s2, 0.5, 80.0f);
 
 	float sample = gen_sine(s1, 440 + mod, 0.3);
 	sample *= 0.5;
-	float delayed = apply_delay(d1, sample);
 	write_to_track(0, i, sample + delayed);
       }
 
       {
-	float sample = gen_phasor(p3);
-	sample *= 0.1;
-	//write_to_track(2, i, sample);
+	//float sample = gen_sine(s1, 440.0f, 0.3);
+	//write_to_track(0, i, sample);
       }
     }
  
@@ -221,10 +249,10 @@ int main(int argc, char** argv) {
 
     // display timer infos
     double max_time = ((double)track_size/2/(double)44100);
-    printf("total:              %f\n", max_time);
-    printf("finish render sound %f\n", render_time);
-    printf("finish play sound   %f\n", play_time);
-    printf("remaining:          %f\n\n", max_time-render_time-play_time);
+    //printf("total:              %f\n", max_time);
+    //("finish render sound %f\n", render_time);
+    //("finish play sound   %f\n", play_time);
+    //("remaining:          %f\n\n", max_time-render_time-play_time);
     assert(max_time-render_time-play_time> 0.0f);
   }
 
