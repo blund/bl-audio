@@ -24,5 +24,5 @@ typedef enum note_event {
 
 
 synth* new_synth(int poly_count, float(*osc)(float, float, int, int*));
-void synth_register_note(synth* s, float freq, float amp, note_event event);
+void synth_register_note(synth* s, float freq, float amp, note_event event, int* id);
 float synth_play(synth* s);

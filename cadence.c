@@ -178,12 +178,16 @@ int main(int argc, char** argv) {
 
   //printf("%d\n", a->info.frames);
   for (int j = 0; j < 1024*8; j++) {
-    if (j == 0)   synth_register_note(s, 440.0f, 0.1, NOTE_ON);
-    if (j == 100) synth_register_note(s, 660.0f, 0.1, NOTE_ON);
-    if (j == 200) synth_register_note(s, 880.0f, 0.1, NOTE_ON);
-    if (j == 600) synth_register_note(s, 440.0f, 0.1, NOTE_OFF);
-    if (j == 700) synth_register_note(s, 660.0f, 0.1, NOTE_OFF);
-    if (j == 800) synth_register_note(s, 880.0f, 0.1, NOTE_OFF);
+    int n1;
+    int n2;
+    int n3;
+
+    if (j == 0)   synth_register_note(s, 440.0f, 0.1, NOTE_ON, &n1);
+    if (j == 100) synth_register_note(s, 660.0f, 0.1, NOTE_ON, &n2);
+    if (j == 200) synth_register_note(s, 880.0f, 0.1, NOTE_ON, &n3);
+    if (j == 600) synth_register_note(s, 440.0f, 0.1, NOTE_OFF, &n1);
+    if (j == 700) synth_register_note(s, 660.0f, 0.1, NOTE_OFF, &n2);
+    if (j == 800) synth_register_note(s, 880.0f, 0.1, NOTE_OFF, &n3);
     
     for (int i = 0; i < a->info.frames; i++) {
       float sample = synth_play(s);

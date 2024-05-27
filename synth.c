@@ -2,8 +2,7 @@
 #include <stdlib.h>
 #include "synth.h"
 
-
-void synth_register_note(synth* s, float freq, float amp, note_event event ) {
+void synth_register_note(synth* s, float freq, float amp, note_event event, int* id) {
   if (event == NOTE_ON) {
     fori(s->poly_count) {
       note* n = &s->notes[i];
@@ -13,22 +12,17 @@ void synth_register_note(synth* s, float freq, float amp, note_event event ) {
 	n->amp = amp;
 	n->reset = 1;
 	n->end = 0;
-	break;
+	*id = i;
+	return;
       }
     }
   }
 
   if (event == NOTE_OFF) {
-    fori(s->poly_count) {
-      note* n = &s->notes[i];
-      if (n->freq == freq) {
-	n->free = 1;
-	n->end = 1;
-	break;
-      }
-    }
+    note* n = &s->notes[*id];
+    n->free = 1;
+    n->end = 1;
   }
-
 }
 
 float synth_play(synth* s) {
