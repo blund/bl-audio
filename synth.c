@@ -58,26 +58,5 @@ synth* new_synth(int poly_count, float(*osc)(float, float, int, int*)) {
 float osc(float freq, int note_index, int* reset) {
   int amp[8] = {1, 10, 100};
   if (*reset) puts("reset!");
-  //printf("note: %d\n", note_index);
   return amp[note_index];
 }
-/*
-int main() {
-
-  synth* s = new_synth(3, osc);
-  synth_register_note(s, 220.0f, 4);
-  synth_register_note(s, 440.0f, 4);
-
-  for(int j = 0;; j++) {
-    if (j == 2) {
-      synth_register_note(s, 777.0f, 4);
-    }
-
-    float sample = synth_play(s);
-
-    printf("final sample: %f\n", sample);
-
-    if (j == 10) break;
-  }
-}
-*/
