@@ -18,7 +18,7 @@ typedef struct audio_info {
 
 
 #define num_tracks 4
-#define track_size 64
+#define track_size 128
 #define channels_pr_track 2
 
 typedef struct audio {
@@ -118,6 +118,11 @@ float apply_delay(delay* d, float sample) {
   return delayed;
 }
 
+void write_to_track(int n, int i, float pan, float sample) {
+  a->tracks[n][2*i]   = pan * sample;
+  a->tracks[n][2*i+1] = (1-pan) * sample;
+}
+
 
 int main() {
   printf("cadence audio engine v. 0.1\n");
@@ -141,36 +146,32 @@ int main() {
       {
 	float sample  = gen_sine(s1);
 	float delayed = apply_delay(d1, sample);
-	a->tracks[0][2*i] = sample + delayed;
-	a->tracks[0][2*i+1] = sample + delayed;
+	write_to_track(0,i, 0.5, sample + delayed);
       }
 
       if (1) {
 	float sample  = gen_sine(s2);
 	float delayed = apply_delay(d2, sample);
-	a->tracks[1][2*i] = sample + delayed;
-	a->tracks[1][2*i+1] = sample + delayed;
+	write_to_track(1,i, 0.5, sample + delayed);
       }
       
       if (1) {
-	float sample1 = gen_phasor(p1);
-	a->tracks[2][2*i] = 0.05*sample1;
-	a->tracks[2][2*i+1] = 0.05*sample1;
+	float sample = gen_phasor(p1);
+	write_to_track(2,i, 0.0, 0.05*sample);
       }
 
       if (1) {
 	float sample = gen_phasor(p2);
-	a->tracks[3][2*i] = 0.05*sample;
-	a->tracks[3][2*i+1] = 0.05*sample;
+	write_to_track(3,i, 1.0, 0.05*sample);
       }
     }
     
     // mix tracks
     // for every sample in each frame..
     for (int i = 0; i < a->info.frames; i++) {
-
       float sample_l = 0;
       float sample_r = 0;
+
       // ...sum up each channel :)
       for (int n = 0; n < num_tracks; n++) {
 	sample_l += a->tracks[n][2*i];
@@ -178,7 +179,7 @@ int main() {
       }
 
       // sample to 16 bit int and copy to alsa buffer
-      a->info.buffer[2*i] = (int16_t)(32768.0f * sample_l);
+      a->info.buffer[2*i]   = (int16_t)(32768.0f * sample_l);
       a->info.buffer[2*i+1] = (int16_t)(32768.0f * sample_r);
     }
 
@@ -197,18 +198,18 @@ void audio_setup(audio** a) {
 
   // clear out channel buffers
   for (int n = 0; n < num_tracks; n++) {
-    for (int s = 0; s < track_size; s++) {
-      (*a)->tracks[n][s] = 0;
+    for (int i = 0; i < track_size; i++) {
+      (*a)->tracks[n][2*i]   = 0;
+      (*a)->tracks[n][2*i+1] = 0;
     }
   }
- 
 
   int rc;
   snd_pcm_t *handle;
   snd_pcm_hw_params_t *params;
   unsigned int sample_rate = 44100;
   int dir;
-  snd_pcm_uframes_t frames = 32;
+  snd_pcm_uframes_t frames = 64;
   int16_t *buffer;
   int buffer_size;
     
