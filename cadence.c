@@ -26,7 +26,7 @@ typedef struct audio_info {
 
 
 #define num_tracks 4
-#define track_size 128
+#define track_size 256
 #define channels_pr_track 2
 
 typedef struct audio {
@@ -168,17 +168,16 @@ int main(int argc, char** argv) {
   synth* s  = new_synth(8, test_osc);
 
   //printf("%d\n", a->info.frames);
+  int n1;
+  int n2;
+  int n3;
   for (int j = 0; j < 1024*8; j++) {
-    int n1;
-    int n2;
-    int n3;
-
     if (j == 0)   synth_register_note(s, 440.0f, 0.1, NOTE_ON, &n1);
-    if (j == 100) synth_register_note(s, 660.0f, 0.1, NOTE_ON, &n2);
-    if (j == 200) synth_register_note(s, 880.0f, 0.1, NOTE_ON, &n3);
-    if (j == 600) synth_register_note(s, 440.0f, 0.1, NOTE_OFF, &n1);
-    if (j == 700) synth_register_note(s, 660.0f, 0.1, NOTE_OFF, &n2);
-    if (j == 800) synth_register_note(s, 880.0f, 0.1, NOTE_OFF, &n3);
+    if (j == 100/2) synth_register_note(s, 660.0f, 0.1, NOTE_ON, &n2);
+    if (j == 200/2) synth_register_note(s, 880.0f, 0.1, NOTE_ON, &n3);
+    if (j == 600/2) synth_register_note(s, 440.0f, 0.1, NOTE_OFF, &n1);
+    if (j == 700/2) synth_register_note(s, 660.0f, 0.1, NOTE_OFF, &n2);
+    if (j == 800/2) synth_register_note(s, 880.0f, 0.1, NOTE_OFF, &n3);
     
     for (int i = 0; i < a->info.frames; i++) {
       float sample = synth_play(s);
