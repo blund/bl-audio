@@ -249,7 +249,7 @@ int main(int argc, char** argv) {
   int n1;
   int n2;
   int n3;
-  for (int j = 0; j < 1024*32; j++) {
+  for (int j = 0; j < 1024; j++) {
     if (j == 0)   synth_register_note(s, 440.0f, 0.1, NOTE_ON, &n1);
     if (j == 100/2) synth_register_note(s, 660.0f, 0.1, NOTE_ON, &n2);
     if (j == 200/2) synth_register_note(s, 880.0f, 0.1, NOTE_ON, &n3);
