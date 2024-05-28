@@ -39,6 +39,7 @@ void audio_setup(audio** a);
 void audio_cleanup(audio_info* a);
 void audio_play_buffer(audio_info* a);
 
+
 // declare global audio a so we don't have to pass it around :)
 audio* a;
 
@@ -50,17 +51,19 @@ void write_to_track(int n, int i, float sample) {
 // -- sine --
 typedef struct sine {
   double t;
+  float freq;
 } sine;
 
 sine* new_sine() {
   sine* s = (sine*)malloc(sizeof(sine)); // @NOTE - hardcoded max buffer size
   s->t = 0;
+  s->freq = 0;
   return s;
 }
 
-float gen_sine(sine* sine, float freq, float volume) {
-  float   wave_period = a->info.sample_rate / freq;
-  float   sample      = volume * sin(sine->t);
+float gen_sine(sine* sine) {
+  float   wave_period = a->info.sample_rate / sine->freq;
+  float   sample      = sin(sine->t);
 
   sine->t += 2.0f * M_PI * 1.0f / wave_period;
 
@@ -72,16 +75,18 @@ float gen_sine(sine* sine, float freq, float volume) {
 // -- phasor --
 typedef struct phasor {
   double value;
+  float freq;
 } phasor;
 
 phasor* new_phasor() {
   phasor* p = (phasor*)malloc(sizeof(phasor)); // @NOTE - hardcoded max buffer size
   p->value = 0;
+  p->freq = 0;
   return p;
 }
 
-float gen_phasor(phasor* p, float freq) {
-  double diff =  (double)freq / (double)a->info.sample_rate;
+float gen_phasor(phasor* p) {
+  double diff =  (double)p->freq / (double)a->info.sample_rate;
   p->value += diff;
   if (p->value > 1.0f) p->value -= 1.0f;
   return p->value;
@@ -121,17 +126,79 @@ float apply_delay(delay* d, float sample, float delay_ms, float feedback) {
   return delayed;
 }
 
+typedef enum gen_type {
+  GEN_NONE,
+  GEN_SINE,
+  GEN_PHASOR,
+} gen_type;
+
+typedef struct gen_table {
+  float val;
+  union {
+    sine* s;
+    phasor* p;
+  };
+  gen_type type;
+  int free;
+} gen_table;
+
+
+int gt_len = 8;
+gen_table gt[8];
+
+int register_gen_table(gen_table* gt, gen_type type) {
+  fori(8) {
+    if (gt[i].free == 1) {
+      gt[i].free = 0;
+      gt[i].type = type;
+      switch(type) {
+      case GEN_SINE: {
+	gt[i].s = new_sine();
+      } break;
+      case GEN_PHASOR: {
+	gt[i].p = new_phasor();
+      } break;
+      default: assert(0);
+      }
+      return i;
+    }
+  }
+  return -1;
+}
+
+void process_gen_table(gen_table* gt) {
+  fori(8) {
+    gen_type t = gt[i].type;
+    switch(t) {
+    case GEN_SINE: {
+      gt[i].val = gen_sine(gt[i].s);
+    } break;
+    case GEN_PHASOR: {
+      gt[i].val = gen_phasor(gt[i].p);
+    } break;
+    case GEN_NONE: break;
+    }
+  }
+}
+
 
 float test_osc(synth* s, float freq, float amp, int index, int* reset) {
   static sine** sines;
   static phasor** phasors;;
   static int init = 0;
+
+  static int sine_i;
+
   if (!init) {
     init = 1;
     sines   = malloc(s->poly_count * sizeof(sine));
     phasors = malloc(s->poly_count * sizeof(phasor));
     fori(4) sines[i] = new_sine();
     fori(4) phasors[i] = new_phasor();
+
+    
+    sine_i = register_gen_table(gt, GEN_SINE);
+    gt[sine_i].p->freq = 0.5;
   }
 
   if (*reset) {
@@ -140,10 +207,15 @@ float test_osc(synth* s, float freq, float amp, int index, int* reset) {
     *reset = 0;
   }
 
-  float phase = gen_phasor(phasors[index], 1.0f);
+  phasors[index]->freq = 1.0f;
+  float phase = gen_phasor(phasors[index]);
   amp *= 1.0f-phase;
-  
-  float sample = gen_sine(sines[index], freq, amp);
+
+
+  float mod = gt[sine_i].val;
+
+  sines[index]->freq = freq + 10.0*mod;
+  float sample = amp * gen_sine(sines[index]);
   return sample;
 }
 
@@ -164,6 +236,13 @@ int main(int argc, char** argv) {
     a->info.buffer = malloc(512*2*sizeof(int16_t));
   }
 
+  fori(8) gt[i].free = 1;
+
+  register_gen_table(gt, GEN_SINE);
+  register_gen_table(gt, GEN_PHASOR);
+  register_gen_table(gt, GEN_SINE);
+  register_gen_table(gt, GEN_PHASOR);
+ 
   delay* d1 = new_delay();
   synth* s  = new_synth(8, test_osc);
 
@@ -180,11 +259,15 @@ int main(int argc, char** argv) {
     if (j == 800/2) synth_register_note(s, 880.0f, 0.1, NOTE_OFF, &n3);
     
     for (int i = 0; i < a->info.frames; i++) {
+
+      process_gen_table(gt);
+
+      // precompute the table of global oscillators :)
       float sample = synth_play(s);
       float delayed = apply_delay(d1, sample, 0.3, 0.6);
       write_to_track(0, i, sample + delayed);
     }
- 
+
     // mix tracks
     // for every sample in each frame..
     for (int i = 0; i < a->info.frames; i++) {
