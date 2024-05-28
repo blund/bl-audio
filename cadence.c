@@ -122,12 +122,14 @@ float apply_delay(delay* d, float sample, float delay_ms, float feedback) {
 }
 
 
-float test_osc(float freq, float amp, int index, int* reset) {
-  static sine* sines[4];
-  static phasor* phasors[4];
+float test_osc(synth* s, float freq, float amp, int index, int* reset) {
+  static sine** sines;
+  static phasor** phasors;;
   static int init = 0;
   if (!init) {
     init = 1;
+    sines   = malloc(s->poly_count * sizeof(sine));
+    phasors = malloc(s->poly_count * sizeof(phasor));
     fori(4) sines[i] = new_sine();
     fori(4) phasors[i] = new_phasor();
   }

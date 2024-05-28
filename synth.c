@@ -32,7 +32,7 @@ float synth_play(synth* s) {
     note* n = &s->notes[i];
     finished &= n->free;
     if (!n->free) {
-      sample += s->osc(n->freq, n->amp, i, &n->reset);
+      sample += s->osc(s, n->freq, n->amp, i, &n->reset);
       n->len_samples--;
       if (!n->len_samples) {
 	n->free = 1;
@@ -42,7 +42,7 @@ float synth_play(synth* s) {
   return sample;
 }
 
-synth* new_synth(int poly_count, float(*osc)(float, float, int, int*)) {
+synth* new_synth(int poly_count, float(*osc)(synth* s, float, float, int, int*)) {
   synth* s = malloc(sizeof(synth));
   s->poly_count = poly_count;
   s->notes = malloc(s->poly_count*sizeof(note));

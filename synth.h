@@ -14,7 +14,7 @@ typedef struct note {
 typedef struct synth {
   note* notes;
   int poly_count;
-  float(*osc)(float freq, float amp, int index, int* reset);
+  float(*osc)(struct synth* s, float freq, float amp, int index, int* reset);
 } synth;
 
 typedef enum note_event {
@@ -23,6 +23,6 @@ typedef enum note_event {
 } note_event;
 
 
-synth* new_synth(int poly_count, float(*osc)(float, float, int, int*));
+synth* new_synth(int poly_count, float(*osc)(synth* s, float, float, int, int*));
 void synth_register_note(synth* s, float freq, float amp, note_event event, int* id);
 float synth_play(synth* s);
