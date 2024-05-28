@@ -127,7 +127,7 @@ float apply_delay(delay* d, float sample, float delay_ms, float feedback) {
 }
 
 typedef enum gen_type {
-  GEN_NONE,
+  GEN_FREE,
   GEN_SINE,
   GEN_PHASOR,
 } gen_type;
@@ -142,14 +142,15 @@ typedef struct gen_table {
   int free;
 } gen_table;
 
-
-int gt_len = 8;
-gen_table gt[8];
+// @NOTE - I tried making to parallel arrays for processing but had no difference :)
+// might try this again if I move the generator directly into the gen table
+// instead of with a pointer reference
+#define gen_table_size 64
+gen_table gt[gen_table_size];
 
 int register_gen_table(gen_table* gt, gen_type type) {
-  fori(8) {
-    if (gt[i].free == 1) {
-      gt[i].free = 0;
+  fori(gen_table_size) {
+    if (gt[i].type == GEN_FREE) {
       gt[i].type = type;
       switch(type) {
       case GEN_SINE: {
@@ -166,17 +167,21 @@ int register_gen_table(gen_table* gt, gen_type type) {
   return -1;
 }
 
+void del_gen_table(gen_table* gt, int i) {
+  gt[i].type = GEN_FREE;
+}
+
 void process_gen_table(gen_table* gt) {
-  fori(8) {
+  fori(gen_table_size) {
     gen_type t = gt[i].type;
     switch(t) {
+    case GEN_FREE: break;
     case GEN_SINE: {
       gt[i].val = gen_sine(gt[i].s);
     } break;
     case GEN_PHASOR: {
       gt[i].val = gen_phasor(gt[i].p);
     } break;
-    case GEN_NONE: break;
     }
   }
 }
@@ -186,19 +191,20 @@ float test_osc(synth* s, float freq, float amp, int index, int* reset) {
   static sine** sines;
   static phasor** phasors;;
   static int init = 0;
-
   static int sine_i;
 
   if (!init) {
     init = 1;
+
+    // set up local oscillators
     sines   = malloc(s->poly_count * sizeof(sine));
     phasors = malloc(s->poly_count * sizeof(phasor));
     fori(4) sines[i] = new_sine();
     fori(4) phasors[i] = new_phasor();
 
-    
+    // and global ones :)
     sine_i = register_gen_table(gt, GEN_SINE);
-    gt[sine_i].p->freq = 0.5;
+    gt[sine_i].p->freq = 0.8;
   }
 
   if (*reset) {
@@ -211,10 +217,9 @@ float test_osc(synth* s, float freq, float amp, int index, int* reset) {
   float phase = gen_phasor(phasors[index]);
   amp *= 1.0f-phase;
 
-
   float mod = gt[sine_i].val;
 
-  sines[index]->freq = freq + 10.0*mod;
+  sines[index]->freq = freq + 15.0*mod;
   float sample = amp * gen_sine(sines[index]);
   return sample;
 }
@@ -236,41 +241,36 @@ int main(int argc, char** argv) {
     a->info.buffer = malloc(512*2*sizeof(int16_t));
   }
 
-  fori(8) gt[i].free = 1;
+  fori(gen_table_size) gt[i].type = GEN_FREE;
 
-  register_gen_table(gt, GEN_SINE);
-  register_gen_table(gt, GEN_PHASOR);
-  register_gen_table(gt, GEN_SINE);
-  register_gen_table(gt, GEN_PHASOR);
- 
   delay* d1 = new_delay();
   synth* s  = new_synth(8, test_osc);
 
-  //printf("%d\n", a->info.frames);
   int n1;
   int n2;
   int n3;
-  for (int j = 0; j < 1024*8; j++) {
+  for (int j = 0; j < 1024*32; j++) {
     if (j == 0)   synth_register_note(s, 440.0f, 0.1, NOTE_ON, &n1);
     if (j == 100/2) synth_register_note(s, 660.0f, 0.1, NOTE_ON, &n2);
     if (j == 200/2) synth_register_note(s, 880.0f, 0.1, NOTE_ON, &n3);
     if (j == 600/2) synth_register_note(s, 440.0f, 0.1, NOTE_OFF, &n1);
     if (j == 700/2) synth_register_note(s, 660.0f, 0.1, NOTE_OFF, &n2);
     if (j == 800/2) synth_register_note(s, 880.0f, 0.1, NOTE_OFF, &n3);
-    
-    for (int i = 0; i < a->info.frames; i++) {
 
+    // process frames
+    fori(a->info.frames) {
+
+      // first handle global generators
       process_gen_table(gt);
 
-      // precompute the table of global oscillators :)
-      float sample = synth_play(s);
+      float sample  = synth_play(s);
       float delayed = apply_delay(d1, sample, 0.3, 0.6);
       write_to_track(0, i, sample + delayed);
     }
 
     // mix tracks
     // for every sample in each frame..
-    for (int i = 0; i < a->info.frames; i++) {
+    fori(a->info.frames) {
       float sample_l = 0;
       float sample_r = 0;
 
