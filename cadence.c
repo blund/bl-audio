@@ -7,11 +7,16 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <alsa/asoundlib.h>
 #include <math.h>
 #include <time.h>
 
+#include <alsa/asoundlib.h>
+
+#define STB_VORBIS_HEADER_ONLY
+#include <stb/stb_vorbis.c>
+
 #include "synth.h"
+
 
 typedef struct audio_info {
   int rc;
@@ -47,6 +52,7 @@ void write_to_track(int n, int i, float sample) {
   a->tracks[n][2*i]   = sample;
   a->tracks[n][2*i+1] = sample;
 }
+
 
 // -- sine --
 typedef struct sine {
@@ -126,6 +132,7 @@ float apply_delay(delay* d, float sample, float delay_ms, float feedback) {
   return delayed;
 }
 
+// generator table for global generators
 typedef enum gen_type {
   GEN_FREE,
   GEN_SINE,
@@ -219,8 +226,50 @@ float test_osc(synth* s, float freq, float amp, int index, int* reset) {
 
   float mod = gt[sine_i].val;
 
-  sines[index]->freq = freq + 15.0*mod;
+  sines[index]->freq = freq;// + 15.0*mod;
   float sample = amp * gen_sine(sines[index]);
+  return sample;
+}
+
+typedef struct sampler {
+  stb_vorbis* v;
+  stb_vorbis_alloc va;
+  stb_vorbis_info vi;
+  int total_samples;
+  int sample_index;
+} sampler;
+
+sampler* new_sampler() {
+  sampler* sr = malloc(sizeof(sampler));
+
+  int error;
+  stb_vorbis* v = stb_vorbis_open_filename("data/swim7.ogg", &error, &sr->va);
+  stb_vorbis_info vi = stb_vorbis_get_info(v);
+  int samples_per_channel = stb_vorbis_stream_length_in_samples(v);
+  int total_samples = samples_per_channel * vi.channels * 2; // ?????
+
+  //sr->total_samples = samples_per_channel * 1; // * sr->vi.channels;
+  //float *output = (float *)malloc(sr->total_samples * sizeof(float));
+  //int samples_read = stb_vorbis_get_samples_float(v, 1, &output, total_samples);
+
+  sr->v = v;
+  sr->total_samples = total_samples;
+  return sr;
+}
+
+float play_sampler(sampler* sr) {
+  if (sr->sample_index > sr->total_samples) return 0;
+
+  //float sample = output[sample_index + i];
+  //sample *= 0.8;
+  //write_to_track(2, i, sample);
+
+  float  sample;         // trick to get a single sample
+  float* buf = &sample;  // buffer
+
+  int    samples_read = stb_vorbis_get_samples_float(sr->v, 1, &buf, 1);
+  sr->sample_index++;
+
   return sample;
 }
 
@@ -241,40 +290,50 @@ int main(int argc, char** argv) {
     a->info.buffer = malloc(512*2*sizeof(int16_t));
   }
 
+  // initialize generator table
   fori(gen_table_size) gt[i].type = GEN_FREE;
 
   delay* d1 = new_delay();
   synth* s  = new_synth(8, test_osc);
+  sampler* sr = new_sampler();
 
+
+  // Notes to play :)
   int n1;
   int n2;
   int n3;
-  for (int j = 0; j < 1024; j++) {
-    if (j == 0)   synth_register_note(s, 440.0f, 0.1, NOTE_ON, &n1);
+
+  for (int j = 0; j < 1024*4; j++) {
+    if (j == 0)     synth_register_note(s, 440.0f, 0.1, NOTE_ON, &n1);
     if (j == 100/2) synth_register_note(s, 660.0f, 0.1, NOTE_ON, &n2);
     if (j == 200/2) synth_register_note(s, 880.0f, 0.1, NOTE_ON, &n3);
     if (j == 600/2) synth_register_note(s, 440.0f, 0.1, NOTE_OFF, &n1);
     if (j == 700/2) synth_register_note(s, 660.0f, 0.1, NOTE_OFF, &n2);
     if (j == 800/2) synth_register_note(s, 880.0f, 0.1, NOTE_OFF, &n3);
 
-    // process frames
+    // -- 1. main processing loop, process the frames for the buffer
     fori(a->info.frames) {
 
       // first handle global generators
       process_gen_table(gt);
 
-      float sample  = synth_play(s);
-      float delayed = apply_delay(d1, sample, 0.3, 0.6);
-      write_to_track(0, i, sample + delayed);
+      { // example synth :)
+	float sample  = synth_play(s);
+	float delayed = apply_delay(d1, sample, 0.3, 0.6);
+	write_to_track(0, i, sample + delayed);
+      }
+
+      { // example sample
+	float sample = play_sampler(sr);
+	write_to_track(2, i, sample);
+      }
     }
 
-    // mix tracks
-    // for every sample in each frame..
+    // -- 2. mix tracks for playback
     fori(a->info.frames) {
       float sample_l = 0;
       float sample_r = 0;
 
-      // ...sum up each channel :)
       for (int n = 0; n < num_tracks; n++) {
 	sample_l += a->tracks[n][2*i];
 	sample_r += a->tracks[n][2*i+1];
@@ -285,7 +344,7 @@ int main(int argc, char** argv) {
       a->info.buffer[2*i+1] = (int16_t)(32768.0f * sample_r);
     }
 
-    // buffer playback
+    // -- 3. buffer playback
     if (!perf_mode) audio_play_buffer(&a->info);
   }
 
