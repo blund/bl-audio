@@ -57,22 +57,19 @@ sampler* new_sampler() {
   int error;
   stb_vorbis* v = stb_vorbis_open_filename("data/swim7.ogg", &error, &sr->va);
   stb_vorbis_info vi = stb_vorbis_get_info(v);
-  int samples_per_channel = stb_vorbis_stream_length_in_samples(v);
-  int total_samples = samples_per_channel * vi.channels * 2; // ?????
+  //int samples_per_channel = stb_vorbis_stream_length_in_samples(v);
+  //int total_samples = samples_per_channel * vi.channels * 2; // ?????
 
   //sr->total_samples = samples_per_channel * 1; // * sr->vi.channels;
   //float *output = (float *)malloc(sr->total_samples * sizeof(float));
   //int samples_read = stb_vorbis_get_samples_float(v, 1, &output, total_samples);
 
   sr->v = v;
-  sr->total_samples = total_samples;
   return sr;
 }
 
 // -- sampler --
 float play_sampler(sampler* sr) {
-  if (sr->sample_index > sr->total_samples) return 0;
-
   //float sample = output[sample_index + i];
   //sample *= 0.8;
   //write_to_track(2, i, sample);
@@ -81,7 +78,7 @@ float play_sampler(sampler* sr) {
   float* buf = &sample;  // buffer
 
   int    samples_read = stb_vorbis_get_samples_float(sr->v, 1, &buf, 1);
-  sr->sample_index++;
+  if (samples_read == 0) return 0;
 
   return sample;
 }
@@ -117,6 +114,10 @@ int register_gen_table(cae_ctx* ctx, gen_type type) {
     }
   }
   return -1;
+}
+
+void gen_table_init(cae_ctx* ctx) {
+  fori(gen_table_size) ctx->gt[i].type = GEN_FREE;
 }
 
 void del_gen_table(cae_ctx* ctx, int i) {

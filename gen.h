@@ -26,8 +26,6 @@ typedef struct sampler {
   stb_vorbis* v;
   stb_vorbis_alloc va;
   stb_vorbis_info vi;
-  int total_samples;
-  int sample_index;
 } sampler;
 sampler* new_sampler();
 float play_sampler(sampler* sr);
@@ -41,6 +39,19 @@ typedef struct delay {
 delay* new_delay(struct cae_ctx* ctx);
 float apply_delay(struct cae_ctx* ctx, delay* d, float sample, float delay_ms, float feedback);
 
+
+// -- gen table --
+/*
+  The gen table is meant for generators you want to use in
+  several instruments per fram iteration, like modulators in
+  polyphonic synths.
+  The generators in the table will be updated at the beginning
+  of each frame processed, and its value will remain the same
+  for every other generator processed.
+  Specifically, instruments can register new generators for the
+  tables, and will have access to them through their registered
+  id.
+ */
 typedef enum gen_type {
   GEN_FREE,
   GEN_SINE,
@@ -56,6 +67,7 @@ struct gen_table {
   gen_type type;
   int free;
 };
+void gen_table_init(struct cae_ctx* ctx);
 int register_gen_table(struct cae_ctx* ctx, gen_type type);
 void del_gen_table(struct cae_ctx* ctx, int i);
 void process_gen_table(struct cae_ctx* ctx);
