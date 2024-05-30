@@ -1,4 +1,5 @@
-#define fori(lim) for(int i = 0; i < lim; i++)
+
+#include "context.h"
 
 typedef struct note {
   float freq;
@@ -14,7 +15,7 @@ typedef struct note {
 typedef struct synth {
   note* notes;
   int poly_count;
-  float(*osc)(struct synth* s, float freq, float amp, int index, int* reset);
+  float(*osc)(cae_ctx* ctx, struct synth* s, float freq, float amp, int index, int* reset);
 } synth;
 
 typedef enum note_event {
@@ -22,7 +23,6 @@ typedef enum note_event {
   NOTE_OFF,
 } note_event;
 
-
-synth* new_synth(int poly_count, float(*osc)(synth* s, float, float, int, int*));
-void synth_register_note(synth* s, float freq, float amp, note_event event, int* id);
-float synth_play(synth* s);
+synth* new_synth(int poly_count, float(*osc)(cae_ctx* ctx, synth* s, float, float, int, int*));
+void   synth_register_note(synth* s, float freq, float amp, note_event event, int* id);
+float  synth_play(cae_ctx* ctx, synth* s);

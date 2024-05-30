@@ -25,14 +25,14 @@ void synth_register_note(synth* s, float freq, float amp, note_event event, int*
   }
 }
 
-float synth_play(synth* s) {
+float synth_play(cae_ctx* ctx, synth* s) {
   int finished = 1;
   float sample = 0;
   fori(s->poly_count) {
     note* n = &s->notes[i];
     finished &= n->free;
     if (!n->free) {
-      sample += s->osc(s, n->freq, n->amp, i, &n->reset);
+      sample += s->osc(ctx, s, n->freq, n->amp, i, &n->reset);
       n->len_samples--;
       if (!n->len_samples) {
 	n->free = 1;
@@ -42,7 +42,7 @@ float synth_play(synth* s) {
   return sample;
 }
 
-synth* new_synth(int poly_count, float(*osc)(synth* s, float, float, int, int*)) {
+synth* new_synth(int poly_count, float(*osc)(cae_ctx* ctx, synth* s, float, float, int, int*)) {
   synth* s = malloc(sizeof(synth));
   s->poly_count = poly_count;
   s->notes = malloc(s->poly_count*sizeof(note));
