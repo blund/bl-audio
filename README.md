@@ -21,3 +21,4 @@ Don't! This project is very much a work in progress, and is mostly created for m
  - Implement more effects (filters, reverb, etc)
  - Lua scripting layer for creating polyphonic synthesizers
  - Some API cleanup...
+ - Mac and Windows platform code
