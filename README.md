@@ -22,3 +22,4 @@ Don't! This project is very much a work in progress, and is mostly created for m
  - Lua scripting layer for creating polyphonic synthesizers
  - Some API cleanup...
  - Mac and Windows platform code
+ - More general sample handling (add partial caching, and support more than just one channel...)
