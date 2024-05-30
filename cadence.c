@@ -5,18 +5,10 @@
   Børge Lundsaunet
 */
 
-#include <stdlib.h>
-
-#include <alsa/asoundlib.h>
-
-#define STB_VORBIS_HEADER_ONLY
-#include <stb/stb_vorbis.c>
-
-#include "platform_audio.h"
 #include "context.h"
+#include "platform_audio.h"
 #include "gen.h"
 #include "synth.h"
-
 
 // Test osc to demonstrate polyphony
 float test_osc(cae_ctx* ctx, synth* s, float freq, float amp, int index, int* reset) {
@@ -61,8 +53,6 @@ int main(int argc, char** argv) {
   cae_ctx* ctx = malloc(sizeof(cae_ctx));
 
   platform_audio_setup(ctx);
-
-  //audio_setup(&ctx->a); @DEL
 
   // initialize generator table
   fori(gen_table_size) ctx->gt[i].type = GEN_FREE;
