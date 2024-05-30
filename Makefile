@@ -7,5 +7,5 @@ cadence.a:
 
 .PHONY: example
 example:
-	make -C example run
-	./example/example
+	make -C example
+	cd example && ./example
