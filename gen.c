@@ -143,3 +143,19 @@ void write_to_track(cae_ctx* ctx, int n, int i, float sample) {
   ctx->a->tracks[n][2*i]   = sample;
   ctx->a->tracks[n][2*i+1] = sample;
 }
+
+void mix_tracks(cae_ctx* ctx) {
+  fori(ctx->a->info.frames) {
+    float sample_l = 0;
+    float sample_r = 0;
+
+    for (int n = 0; n < num_tracks; n++) {
+      sample_l += ctx->a->tracks[n][2*i];
+      sample_r += ctx->a->tracks[n][2*i+1];
+    }
+
+    // sample to 16 bit int and copy to alsa buffer
+    ctx->a->info.buffer[2*i]   = (int16_t)(32768.0f * sample_l);
+    ctx->a->info.buffer[2*i+1] = (int16_t)(32768.0f * sample_r);
+  }
+}

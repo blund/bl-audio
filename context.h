@@ -37,5 +37,7 @@ typedef struct cae_ctx {
 } cae_ctx;
 
 void write_to_track(cae_ctx* ctx, int n, int i, float sample);
+void mix_tracks(cae_ctx* ctx);
+void write_to_track(cae_ctx* ctx, int n, int i, float sample);
 
 #endif
