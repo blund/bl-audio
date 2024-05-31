@@ -25,7 +25,7 @@ void synth_register_note(synth* s, float freq, float amp, note_event event, int*
   }
 }
 
-float synth_play(cae_ctx* ctx, synth* s) {
+float play_synth(cae_ctx* ctx, synth* s) {
   int finished = 1;
   float sample = 0;
   fori(s->poly_count) {

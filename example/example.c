@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
       process_gen_table(ctx);
 
       { // example synth :)
-	float sample  = synth_play(ctx, s);
+	float sample  = play_synth(ctx, s);
 	float delayed = apply_delay(ctx, d, sample, 0.3, 0.6);
 	write_to_track(ctx, 0, i, sample + delayed);
       }
