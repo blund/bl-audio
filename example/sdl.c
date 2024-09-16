@@ -294,7 +294,7 @@ int main()
   }
 
   SDL_Window* Window = SDL_CreateWindow(
-    "Circular Audio Buffer Example",
+    "Cadence",
     SDL_WINDOWPOS_UNDEFINED,
     SDL_WINDOWPOS_UNDEFINED,
     1280,
@@ -362,8 +362,10 @@ int main()
 	int key_idx = vals[sym-97];
 	if (key_idx == -1) break;
 
-	// Find freq and play note
+	// Find freq for note
 	float freq = 261.63*pow(1.05946309436, key_idx);
+
+	// Make some sound :)
 	synth_register_note(syn, freq, 0.1, NOTE_ON, sym); // Note that notes are keyed by ascii key code (sym)
       }
 
