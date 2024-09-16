@@ -6,7 +6,7 @@
 #define STB_VORBIS_HEADER_ONLY
 #include <stb/stb_vorbis.c>
 
-typedef struct cae_ctx cat_ctx;
+typedef struct cae_ctx cae_ctx;
 
 typedef struct sine {
   double t;
