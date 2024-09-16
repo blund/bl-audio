@@ -22,6 +22,7 @@ void synth_register_note(synth* s, float freq, float amp, note_event event, int*
     note* n = &s->notes[*id];
     n->free = 1;
     n->end = 1;
+    *id = -1;
   }
 }
 

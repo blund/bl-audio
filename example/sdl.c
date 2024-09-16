@@ -103,7 +103,7 @@ cae_loop(platform_audio_config* AudioConfig)
   s->freq = AudioConfig->ToneHz;
   process_gen_table(ctx);
 
-  float sample = play_synth(ctx, syn);
+  float sample  = play_synth(ctx, syn);
   float delayed = apply_delay(ctx, d, sample, 0.3, 0.6);
   
   return (int16_t)16768*(sample+delayed);
@@ -310,15 +310,14 @@ int main()
     PlatformAudioThread, "Audio", (void*)&AudioThreadContext
   );
 
+  SDL_Event event = ProgramState.LastEvent;
   while (ProgramState.IsRunning)
   {
-    while (SDL_PollEvent(&ProgramState.LastEvent))
+
+    while (SDL_PollEvent(&event))
     {
-      switch( ProgramState.LastEvent.type ){
-	/* Keyboard event */
-	/* Pass the event data onto PrintKeyInfo() */
-      case SDL_KEYDOWN: {
-	SDL_Event event = ProgramState.LastEvent;
+      if (event.type == SDL_KEYDOWN) {
+	if (event.key.repeat) break;
 	switch( event.key.keysym.sym ){
 	case SDLK_a:
 	  synth_register_note(syn, 440.0f, 0.1, NOTE_ON, &n1);
@@ -339,24 +338,21 @@ int main()
 	  break;
 	}
       }
-      case SDL_KEYUP: {
-	SDL_Event event = ProgramState.LastEvent;
+      if (event.type == SDL_KEYUP) {
+	puts("bim?");
 	switch( event.key.keysym.sym ){
-	case SDLK_s:
+	case SDLK_a:
+	  puts("test");
 	  synth_register_note(syn, 0.0f, 0.1, NOTE_OFF, &n1);
 	  break;
-	case SDLK_n:
+	case SDLK_b:
+	  puts("test");
 	  synth_register_note(syn, 0.0f, 0.1, NOTE_OFF, &n2);
 	  break;
 	}
       }
-	break;
-      case SDL_QUIT:
+      if (event.type == SDL_QUIT) {
 	ProgramState.IsRunning = 0;
-	break;
-
-      default:
-	break;
       }
       PlatformHandleEvent(&ProgramState);
     }
@@ -395,7 +391,7 @@ float test_osc(cae_ctx* ctx, synth* s, float freq, float amp, int index, int* re
 
     // and global ones :)
     sine_i = register_gen_table(ctx, GEN_SINE);
-    ctx->gt[sine_i].p->freq = 0.8;
+    ctx->gt[sine_i].p->freq = 8.0;
   }
 
   if (*reset) {
@@ -404,13 +400,13 @@ float test_osc(cae_ctx* ctx, synth* s, float freq, float amp, int index, int* re
     *reset = 0;
   }
 
-  phasors[index]->freq = 1.0f;
+  phasors[index]->freq = 8.0f;
   float phase = gen_phasor(ctx, phasors[index]);
   amp *= 1.0f-phase;
 
   float mod = ctx->gt[sine_i].val;
 
   sines[index]->freq = freq;// + 15.0*mod;
-  float sample = 0.7 * mod * gen_sine(ctx, sines[index]);
+  float sample = 0.5 * mod * gen_sine(ctx, sines[index]);
   return sample;
 }
