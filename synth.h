@@ -7,6 +7,7 @@ typedef struct note {
   float len_samples;
 
   // @TODO - these should be bit flags
+  int key; // used to identify note on/off-events
   int free; // denote whether this slot is free or not
   int end;
   int reset;
@@ -24,5 +25,5 @@ typedef enum note_event {
 } note_event;
 
 synth* new_synth(int poly_count, float(*osc)(cae_ctx* ctx, synth* s, float, float, int, int*));
-void   synth_register_note(synth* s, float freq, float amp, note_event event, int* id);
+void   synth_register_note(synth* s, float freq, float amp, note_event event, int key);
 float  play_synth(cae_ctx* ctx, synth* s);

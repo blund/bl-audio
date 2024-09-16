@@ -19,6 +19,63 @@ static uint32_t SDL_AUDIO_TRANSPARENTLY_CONVERT_FORMAT = 0;
 ///////////////////////////////////////////////////////////////////////////////
 
 
+// 97 -> 119;
+float vals[25] = {
+  0,  // 97 = c
+  -1, // 98
+  -1, // 99
+  4,  // 100 = e
+  3,  // 101 = d#
+  5,  // 102 = f
+  7,  // 103 = g
+  9,  // 104 = a
+  -1, // 105
+  11, // 106 = b
+  12, // 107 = c2
+  -1, // 108
+  -1, // 109
+  -1, // 110
+  -1, // 111
+  -1, // 112
+  -1, // 113
+  -1, // 114
+  2,  // 115 = d
+  6,  // 116 = f#
+  10, // 117 = a#
+  -1, // 118
+  1,  // 119 = c#
+  -1, // 120
+  8   // 121 = g#
+};
+
+typedef struct slot_pair {
+  int key;
+  int id;
+} slot_pair;
+
+slot_pair slots[8];
+
+int* try_play(int key) {
+  fori(8) {
+    if (slots[i].key == -1) {
+      slots[i].key = key;
+      return &slots[i].id;
+    }
+  }
+  return NULL;
+}
+
+int* try_release(int key) {
+ fori(8) {
+    if (slots[i].key == key) {
+      slots[i].key = -1;
+      return &slots[i].id;
+    }
+ }
+ return NULL;
+}
+
+
 float test_osc(cae_ctx* ctx, synth* s, float freq, float amp, int index, int* reset);
 
 typedef struct platform_program_state
@@ -55,29 +112,12 @@ typedef struct platform_audio_thread_context
 
 ///////////////////////////////////////////////////////////////////////////////
 
-internal int16_t
-SampleSquareWave(platform_audio_config* AudioConfig)
-{
-  int HalfSquareWaveCounter = AudioConfig->WavePeriod / 2;
-  if ((AudioConfig->SampleIndex / HalfSquareWaveCounter) % 2 == 0)
-  {
-    return AudioConfig->ToneVolume;
-  }
-
-  return -AudioConfig->ToneVolume;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
 cae_ctx* ctx;
 audio a;
 sine* s;
 int inited = 0;
 synth* syn;
 delay* d;
-
-int n1;
-int n2;
 
 internal int16_t
 cae_loop(platform_audio_config* AudioConfig)
@@ -87,9 +127,6 @@ cae_loop(platform_audio_config* AudioConfig)
     ctx = malloc(sizeof(cae_ctx));
     a.info.sample_rate = 44100;
     ctx->a = &a;
-    s = new_sine();
-    s->t = 0;
-    s->freq = AudioConfig->ToneHz;
 
     syn = new_synth(8, test_osc);
     d = new_delay(ctx);
@@ -100,7 +137,6 @@ cae_loop(platform_audio_config* AudioConfig)
 
   }
 
-  s->freq = AudioConfig->ToneHz;
   process_gen_table(ctx);
 
   float sample  = play_synth(ctx, syn);
@@ -281,10 +317,6 @@ int main()
   AudioConfig.SamplesPerSecond = 44100;
   AudioConfig.BytesPerSample = 2 * sizeof(int16_t);
   AudioConfig.SampleIndex = 0;
-  AudioConfig.ToneHz = 256;
-  AudioConfig.ToneVolume = 3000;
-  AudioConfig.WavePeriod =
-    AudioConfig.SamplesPerSecond / AudioConfig.ToneHz;
 
   platform_audio_buffer AudioBuffer = {};
   AudioBuffer.Size = 2048; //AudioConfig.SamplesPerSecond * AudioConfig.BytesPerSample; // 2048
@@ -310,6 +342,8 @@ int main()
     PlatformAudioThread, "Audio", (void*)&AudioThreadContext
   );
 
+  fori(8) slots[i].key = -1;
+
   SDL_Event event = ProgramState.LastEvent;
   while (ProgramState.IsRunning)
   {
@@ -318,38 +352,25 @@ int main()
     {
       if (event.type == SDL_KEYDOWN) {
 	if (event.key.repeat) break;
-	switch( event.key.keysym.sym ){
-	case SDLK_a:
-	  synth_register_note(syn, 440.0f, 0.1, NOTE_ON, &n1);
-	  puts("a");
-	  AudioConfig.ToneHz = 330;
-	  AudioConfig.WavePeriod =
-	    AudioConfig.SamplesPerSecond / AudioConfig.ToneHz;
-	  break;
-	case SDLK_b:
-	  puts("b");
-	  synth_register_note(syn, 660.0f, 0.1, NOTE_ON, &n2);
-	  AudioConfig.ToneHz = 440;
-	  AudioConfig.WavePeriod =
-	    AudioConfig.SamplesPerSecond / AudioConfig.ToneHz;
-	  break;
-	case SDLK_q:
-	  ProgramState.IsRunning = 0;
-	  break;
-	}
+	
+	int sym = event.key.keysym.sym;
+
+	// Clean up the inputs
+	if (sym > 121 | sym < 97) break;
+	if (sym == SDLK_q) ProgramState.IsRunning = 0;
+
+	// printf("%d (%d): %f\n", sym, sym-97, vals[sym-97]);
+
+	int key_idx = vals[sym-97];
+	if (key_idx == -1) break;
+
+	float freq = 261.63*pow(1.05946309436, key_idx);
+	synth_register_note(syn, freq, 0.1, NOTE_ON, sym);
       }
+
       if (event.type == SDL_KEYUP) {
-	puts("bim?");
-	switch( event.key.keysym.sym ){
-	case SDLK_a:
-	  puts("test");
-	  synth_register_note(syn, 0.0f, 0.1, NOTE_OFF, &n1);
-	  break;
-	case SDLK_b:
-	  puts("test");
-	  synth_register_note(syn, 0.0f, 0.1, NOTE_OFF, &n2);
-	  break;
-	}
+	int sym = event.key.keysym.sym;
+	synth_register_note(syn, 0, 0, NOTE_OFF, sym);
       }
       if (event.type == SDL_QUIT) {
 	ProgramState.IsRunning = 0;
@@ -386,8 +407,8 @@ float test_osc(cae_ctx* ctx, synth* s, float freq, float amp, int index, int* re
     // set up local oscillators
     sines   = malloc(s->poly_count * sizeof(sine));
     phasors = malloc(s->poly_count * sizeof(phasor));
-    fori(4) sines[i] = new_sine();
-    fori(4) phasors[i] = new_phasor();
+    fori(s->poly_count) sines[i] = new_sine();
+    fori(s->poly_count) phasors[i] = new_phasor();
 
     // and global ones :)
     sine_i = register_gen_table(ctx, GEN_SINE);
@@ -407,6 +428,6 @@ float test_osc(cae_ctx* ctx, synth* s, float freq, float amp, int index, int* re
   float mod = ctx->gt[sine_i].val;
 
   sines[index]->freq = freq;// + 15.0*mod;
-  float sample = 0.5 * mod * gen_sine(ctx, sines[index]);
+  float sample = 0.2 * gen_sine(ctx, sines[index]);
   return sample;
 }

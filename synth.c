@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "synth.h"
 
-void synth_register_note(synth* s, float freq, float amp, note_event event, int* id) {
+void synth_register_note(synth* s, float freq, float amp, note_event event, int key) {
   if (event == NOTE_ON) {
     fori(s->poly_count) {
       note* n = &s->notes[i];
@@ -12,17 +12,22 @@ void synth_register_note(synth* s, float freq, float amp, note_event event, int*
 	n->amp = amp;
 	n->reset = 1;
 	n->end = 0;
-	*id = i;
+	n->key = key;
 	return;
       }
     }
   }
 
   if (event == NOTE_OFF) {
-    note* n = &s->notes[*id];
-    n->free = 1;
-    n->end = 1;
-    *id = -1;
+    fori(s->poly_count) {
+      note* n = &s->notes[i];
+      if (n->key == key) {
+	n->free = 1;
+	n->end = 1;
+	return;
+      }
+    }
+    puts("error: got note off on non-existant key");
   }
 }
 
