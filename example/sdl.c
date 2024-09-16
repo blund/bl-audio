@@ -123,7 +123,6 @@ internal int16_t
 cae_loop(platform_audio_config* AudioConfig)
 {
   if (!inited) {
-    puts("initialize");
     ctx = malloc(sizeof(cae_ctx));
     a.info.sample_rate = 44100;
     ctx->a = &a;
@@ -133,8 +132,6 @@ cae_loop(platform_audio_config* AudioConfig)
 
     gen_table_init(ctx);
     inited = 1;
-    puts("inited");
-
   }
 
   process_gen_table(ctx);
@@ -351,27 +348,30 @@ int main()
     while (SDL_PollEvent(&event))
     {
       if (event.type == SDL_KEYDOWN) {
+
+	// Avoid repeats
 	if (event.key.repeat) break;
 	
 	int sym = event.key.keysym.sym;
 
-	// Clean up the inputs
-	if (sym > 121 | sym < 97) break;
+	// Check if program should quit
 	if (sym == SDLK_q) ProgramState.IsRunning = 0;
 
-	// printf("%d (%d): %f\n", sym, sym-97, vals[sym-97]);
-
+	// Clean up the inputs
+	if (sym > 121 | sym < 97) break;
 	int key_idx = vals[sym-97];
 	if (key_idx == -1) break;
 
+	// Find freq and play note
 	float freq = 261.63*pow(1.05946309436, key_idx);
-	synth_register_note(syn, freq, 0.1, NOTE_ON, sym);
+	synth_register_note(syn, freq, 0.1, NOTE_ON, sym); // Note that notes are keyed by ascii key code (sym)
       }
 
       if (event.type == SDL_KEYUP) {
 	int sym = event.key.keysym.sym;
 	synth_register_note(syn, 0, 0, NOTE_OFF, sym);
       }
+
       if (event.type == SDL_QUIT) {
 	ProgramState.IsRunning = 0;
       }
