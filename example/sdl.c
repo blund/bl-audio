@@ -77,6 +77,7 @@ synth* syn;
 delay* d;
 
 int n1;
+int n2;
 
 internal int16_t
 cae_loop(platform_audio_config* AudioConfig)
@@ -97,7 +98,6 @@ cae_loop(platform_audio_config* AudioConfig)
     inited = 1;
     puts("inited");
 
-    synth_register_note(syn, 440.0f, 0.1, NOTE_ON, &n1);
   }
 
   s->freq = AudioConfig->ToneHz;
@@ -105,7 +105,6 @@ cae_loop(platform_audio_config* AudioConfig)
 
   float sample = play_synth(ctx, syn);
   float delayed = apply_delay(ctx, d, sample, 0.3, 0.6);
-
   
   return (int16_t)16768*(sample+delayed);
 }
@@ -311,8 +310,6 @@ int main()
     PlatformAudioThread, "Audio", (void*)&AudioThreadContext
   );
 
-
- 
   while (ProgramState.IsRunning)
   {
     while (SDL_PollEvent(&ProgramState.LastEvent))
@@ -324,13 +321,15 @@ int main()
 	SDL_Event event = ProgramState.LastEvent;
 	switch( event.key.keysym.sym ){
 	case SDLK_a:
-	  puts("epic");
+	  synth_register_note(syn, 440.0f, 0.1, NOTE_ON, &n1);
+	  puts("a");
 	  AudioConfig.ToneHz = 330;
 	  AudioConfig.WavePeriod =
 	    AudioConfig.SamplesPerSecond / AudioConfig.ToneHz;
 	  break;
 	case SDLK_b:
-	  puts("epic");
+	  puts("b");
+	  synth_register_note(syn, 660.0f, 0.1, NOTE_ON, &n2);
 	  AudioConfig.ToneHz = 440;
 	  AudioConfig.WavePeriod =
 	    AudioConfig.SamplesPerSecond / AudioConfig.ToneHz;
@@ -340,7 +339,17 @@ int main()
 	  break;
 	}
       }
-      case SDL_KEYUP:
+      case SDL_KEYUP: {
+	SDL_Event event = ProgramState.LastEvent;
+	switch( event.key.keysym.sym ){
+	case SDLK_s:
+	  synth_register_note(syn, 0.0f, 0.1, NOTE_OFF, &n1);
+	  break;
+	case SDLK_n:
+	  synth_register_note(syn, 0.0f, 0.1, NOTE_OFF, &n2);
+	  break;
+	}
+      }
 	break;
       case SDL_QUIT:
 	ProgramState.IsRunning = 0;
@@ -402,6 +411,6 @@ float test_osc(cae_ctx* ctx, synth* s, float freq, float amp, int index, int* re
   float mod = ctx->gt[sine_i].val;
 
   sines[index]->freq = freq;// + 15.0*mod;
-  float sample = amp * gen_sine(ctx, sines[index]);
+  float sample = 0.7 * mod * gen_sine(ctx, sines[index]);
   return sample;
 }
