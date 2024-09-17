@@ -48,33 +48,7 @@ float vals[25] = {
   8   // 121 = g#
 };
 
-typedef struct slot_pair {
-  int key;
-  int id;
-} slot_pair;
-
 slot_pair slots[8];
-
-int* try_play(int key) {
-  fori(8) {
-    if (slots[i].key == -1) {
-      slots[i].key = key;
-      return &slots[i].id;
-    }
-  }
-  return NULL;
-}
-
-int* try_release(int key) {
- fori(8) {
-    if (slots[i].key == key) {
-      slots[i].key = -1;
-      return &slots[i].id;
-    }
- }
- return NULL;
-}
-
 osc_t test_osc;
 //float test_osc(cae_ctx* ctx, synth* s, float freq, float amp, int index, int* reset, int release);
 
