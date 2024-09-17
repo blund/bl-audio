@@ -1,19 +1,24 @@
 
 #include "context.h"
 
+typedef enum note_flags {
+  NOTE_FREE    = 0, // whether note slot is free for a new note
+  NOTE_RELEASE = 1, // whether note should start releasing
+  NOTE_RESET   = 2, // whether synth should reset internals for this note index
+} note_flags;
+
+
 typedef struct note {
   float freq;
   float amp;
 
-  int release_remaining_samples;
-
-  int key; // used to identify note on/off-events
-
-  // @TODO - these should be bit flags
-  int free;    // denote whether this slot is free or not
-  int release; // trigger synth release event
-  int reset;   // reset internal parameters
+  int   key;   // used to identify note on/off-events
+  int   flags;
 } note;
+
+void set_flag(note* note, note_flags flag);
+void unset_flag(note* note, note_flags flag);
+int  check_flag(note* note, note_flags flag);
 
 struct synth; // Forward declare 'synth' for osc_t def
 typedef float osc_t (cae_ctx* ctx, struct synth* s, int note_index, note* note);
@@ -21,10 +26,8 @@ typedef float osc_t (cae_ctx* ctx, struct synth* s, int note_index, note* note);
 typedef struct synth {
   osc_t* osc;
 
-  int poly_count;
+  int   poly_count;
   note* notes;
-
-  int release_total_samples;
 } synth;
 
 typedef enum note_event {

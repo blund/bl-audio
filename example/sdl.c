@@ -128,7 +128,6 @@ cae_loop(platform_audio_config* AudioConfig)
     ctx->a = &a;
 
     syn = new_synth(8, test_osc);
-    syn->release_total_samples = 1000;
     d = new_delay(ctx);
 
     gen_table_init(ctx);
@@ -399,10 +398,18 @@ int main()
 
 // Test osc to demonstrate polyphony
 float test_osc(cae_ctx* ctx, synth* s, int note_index, note* note) {
-  static sine** sines;
-  static phasor** phasors;;
   static int init = 0;
+
+  // oscillators for each note
+  static sine** sines;
+  static phasor** phasors;
+
+  // index for oscillator in gen table
   static int sine_i;
+
+  // handle release
+  static int release_samples = 5000;
+  static int* release_remaining_samples;
 
   if (!init) {
     init = 1;
@@ -413,15 +420,22 @@ float test_osc(cae_ctx* ctx, synth* s, int note_index, note* note) {
     fori(s->poly_count) sines[i] = new_sine();
     fori(s->poly_count) phasors[i] = new_phasor();
 
+
+    // set up release table
+    release_remaining_samples = malloc(s->poly_count * sizeof(int));
+    fori(s->poly_count) release_remaining_samples[i] = 0;
+
     // and global ones :)
     sine_i = register_gen_table(ctx, GEN_SINE);
     ctx->gt[sine_i].p->freq = 8.0;
   }
 
-  if (note->reset) {
+  if (check_flag(note, NOTE_RESET)) {
     sines[note_index]->t = 0;
     phasors[note_index]->value = 0;
-    note->reset = 0;
+    release_remaining_samples[note_index] = release_samples;
+    
+    unset_flag(note, NOTE_RESET);
   }
 
   phasors[note_index]->freq = 8.0f;
@@ -433,11 +447,12 @@ float test_osc(cae_ctx* ctx, synth* s, int note_index, note* note) {
   sines[note_index]->freq = note->freq;// + 15.0*mod;
   float sample = 0.2 * gen_sine(ctx, sines[note_index]);
 
-  if (note->release) {
-    sample *= (float)note->release_remaining_samples / (float)s->release_total_samples;
-    note->release_remaining_samples--;
-    if (note->release_remaining_samples == 0) {
-      note->free = 1;
+  if (check_flag(note, NOTE_RELEASE)) {
+    sample *= (float)release_remaining_samples[note_index] / (float)release_samples;
+    release_remaining_samples[note_index] -= 1;
+    if (release_remaining_samples[note_index] == 0) {
+      set_flag(note, NOTE_FREE);
+      release_remaining_samples[note_index] = release_samples;
     }
   }
 
