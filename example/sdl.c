@@ -300,7 +300,7 @@ int main()
 
 
   // Set up cadence context
-  ctx = cadence_setup();
+  ctx = cadence_setup(44100);
   
   
   SDL_Event event = ProgramState.LastEvent;
