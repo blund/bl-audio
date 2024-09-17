@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <math.h>
+#include <assert.h>
 
 #include "gen.h"
 #include "context.h"
@@ -13,7 +14,7 @@ sine* new_sine() {
 }
 
 float gen_sine(cae_ctx* ctx, sine* sine) {
-  float   wave_period = ctx->a->info.sample_rate / sine->freq;
+  float   wave_period = ctx->sample_rate / sine->freq;
   float   sample      = sin(sine->t);
 
   sine->t += 2.0f * M_PI * 1.0f / wave_period;
@@ -32,7 +33,7 @@ phasor* new_phasor() {
 }
 
 float gen_phasor(cae_ctx* ctx, phasor* p) {
-  double diff =  (double)p->freq / (double)ctx->a->info.sample_rate;
+  double diff =  (double)p->freq / (double)ctx->sample_rate;
   p->value += diff;
   if (p->value > 1.0f) p->value -= 1.0f;
   return p->value;
@@ -41,7 +42,7 @@ float gen_phasor(cae_ctx* ctx, phasor* p) {
 // -- delay --
 delay* new_delay(cae_ctx* ctx) {
   delay* d = (delay*)malloc(sizeof(delay)); // @NOTE - hardcoded max buffer size
-  d->buf_size = 10*ctx->a->info.sample_rate;
+  d->buf_size = 10*ctx->sample_rate;
   d->buffer = malloc(d->buf_size * sizeof(float));
 
   // clear out buffer @NOTE - might be unecessary
@@ -84,7 +85,7 @@ float play_sampler(sampler* sr) {
 }
 
 float apply_delay(cae_ctx* ctx, delay* d, float sample, float delay_ms, float feedback) {
-  d->read_offset = delay_ms * ctx->a->info.sample_rate; // @NOTE - hardcoded samplerate
+  d->read_offset = delay_ms * ctx->sample_rate; // @NOTE - hardcoded samplerate
   // read from delay buffer
   uint32_t index = (d->write_head - d->read_offset) % d->buf_size;
   float delayed  = d->buffer[index];
@@ -139,11 +140,14 @@ void process_gen_table(cae_ctx* ctx) {
   }
 }
 
+/*
 void write_to_track(cae_ctx* ctx, int n, int i, float sample) {
-  ctx->a->tracks[n][2*i]   = sample;
-  ctx->a->tracks[n][2*i+1] = sample;
+  ctx->tracks[n][2*i]   = sample;
+  ctx->tracks[n][2*i+1] = sample;
 }
+*/
 
+/*
 void mix_tracks(cae_ctx* ctx) {
   fori(ctx->a->info.frames) {
     float sample_l = 0;
@@ -159,3 +163,4 @@ void mix_tracks(cae_ctx* ctx) {
     ctx->a->info.buffer[2*i+1] = (int16_t)(32768.0f * sample_r);
   }
 }
+*/

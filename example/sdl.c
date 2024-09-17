@@ -2,11 +2,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "context.h"
-#include "platform_audio.h"
-#include "gen.h"
-#include "synth.h"
-
+#include "cadence.h"
 
 #define internal static
 
@@ -85,25 +81,16 @@ typedef struct platform_audio_thread_context
 ///////////////////////////////////////////////////////////////////////////////
 
 cae_ctx* ctx;
-audio a;
-sine* s;
-int inited = 0;
 synth* syn;
 delay* d;
 
 internal int16_t
-cae_loop(platform_audio_config* AudioConfig)
+proc_loop(platform_audio_config* AudioConfig)
 {
-  if (!inited) {
-    ctx = malloc(sizeof(cae_ctx));
-    a.info.sample_rate = 44100;
-    ctx->a = &a;
-
+  if (!ctx->initialized) {
     syn = new_synth(8, test_osc);
-    d = new_delay(ctx);
-
-    gen_table_init(ctx);
-    inited = 1;
+    d   = new_delay(ctx);
+    ctx->initialized = 1;
   }
 
   process_gen_table(ctx);
@@ -248,7 +235,7 @@ PlatformAudioThread(void* UserData)
   while (AudioThread->ProgramState->IsRunning)
   {
     SDL_LockAudioDevice(AudioThread->AudioBuffer->DeviceID);
-    SampleIntoAudioBuffer(AudioThread->AudioBuffer, &cae_loop);
+    SampleIntoAudioBuffer(AudioThread->AudioBuffer, &proc_loop);
     SDL_UnlockAudioDevice(AudioThread->AudioBuffer->DeviceID);
   }
 
@@ -311,6 +298,11 @@ int main()
     PlatformAudioThread, "Audio", (void*)&AudioThreadContext
   );
 
+
+  // Set up cadence context
+  ctx = cadence_setup();
+  
+  
   SDL_Event event = ProgramState.LastEvent;
   while (ProgramState.IsRunning)
   {

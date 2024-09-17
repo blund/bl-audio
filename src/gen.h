@@ -68,7 +68,7 @@ struct gen_table {
   int free;
 };
 void gen_table_init(struct cae_ctx* ctx);
-int register_gen_table(struct cae_ctx* ctx, gen_type type);
+int  register_gen_table(struct cae_ctx* ctx, gen_type type);
 void del_gen_table(struct cae_ctx* ctx, int i);
 void process_gen_table(struct cae_ctx* ctx);
 
