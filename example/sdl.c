@@ -48,15 +48,14 @@ osc_t test_osc;
 
 typedef struct platform_program_state
 {
+  cadence_ctx* ctx;
+
   bool IsRunning;
   SDL_Event LastEvent;
 } platform_program_state;
 
 typedef struct platform_audio_config
 {
-  int ToneHz;
-  int ToneVolume;
-  int WavePeriod;
   int SampleIndex;
   int SamplesPerSecond;
   int BytesPerSample;
@@ -80,12 +79,11 @@ typedef struct platform_audio_thread_context
 
 ///////////////////////////////////////////////////////////////////////////////
 
-cadence_ctx* ctx;
 synth* syn;
 delay* d;
 
 internal int16_t
-proc_loop(platform_audio_config* AudioConfig)
+proc_loop(cadence_ctx* ctx)
 {
   if (!ctx->initialized) {
     syn = new_synth(8, test_osc);
@@ -105,7 +103,8 @@ proc_loop(platform_audio_config* AudioConfig)
 
 internal void
 SampleIntoAudioBuffer(platform_audio_buffer* AudioBuffer,
-                      int16_t (*GetSample)(platform_audio_config*))
+                      int16_t (*GetSample)(cadence_ctx*),
+		      cadence_ctx* ctx)
 {
   int Region1Size = AudioBuffer->ReadCursor - AudioBuffer->WriteCursor;
   int Region2Size = 0;
@@ -128,7 +127,7 @@ SampleIntoAudioBuffer(platform_audio_buffer* AudioBuffer,
        SampleIndex < Region1Samples;
        SampleIndex++)
   {
-    int16_t SampleValue = (*GetSample)(AudioConfig);
+    int16_t SampleValue = (*GetSample)(ctx);
     *Buffer++ = SampleValue;
     *Buffer++ = SampleValue;
     AudioConfig->SampleIndex++;
@@ -139,7 +138,7 @@ SampleIntoAudioBuffer(platform_audio_buffer* AudioBuffer,
        SampleIndex < Region2Samples;
        SampleIndex++)
   {
-    int16_t SampleValue = (*GetSample)(AudioConfig);
+    int16_t SampleValue = (*GetSample)(ctx);
     *Buffer++ = SampleValue;
     *Buffer++ = SampleValue;
     AudioConfig->SampleIndex++;
@@ -235,7 +234,7 @@ PlatformAudioThread(void* UserData)
   while (AudioThread->ProgramState->IsRunning)
   {
     SDL_LockAudioDevice(AudioThread->AudioBuffer->DeviceID);
-    SampleIntoAudioBuffer(AudioThread->AudioBuffer, &proc_loop);
+    SampleIntoAudioBuffer(AudioThread->AudioBuffer, &proc_loop, AudioThread->ProgramState->ctx);
     SDL_UnlockAudioDevice(AudioThread->AudioBuffer->DeviceID);
   }
 
@@ -300,10 +299,10 @@ int main()
 
 
   // Set up cadence context
-  ctx = cadence_setup(44100);
+  ProgramState.ctx = cadence_setup(44100);
   
   
-  SDL_Event event = ProgramState.LastEvent;
+  SDL_Event event;
   while (ProgramState.IsRunning)
   {
 
@@ -339,7 +338,6 @@ int main()
       if (event.type == SDL_QUIT) {
 	ProgramState.IsRunning = 0;
       }
-      PlatformHandleEvent(&ProgramState);
     }
 
     SDL_SetRenderDrawColor(Renderer, 0, 0, 0, 0);
