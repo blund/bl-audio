@@ -13,7 +13,7 @@ sine* new_sine() {
   return s;
 }
 
-float gen_sine(cae_ctx* ctx, sine* sine) {
+float gen_sine(cadence_ctx* ctx, sine* sine) {
   float   wave_period = ctx->sample_rate / sine->freq;
   float   sample      = sin(sine->t);
 
@@ -32,7 +32,7 @@ phasor* new_phasor() {
   return p;
 }
 
-float gen_phasor(cae_ctx* ctx, phasor* p) {
+float gen_phasor(cadence_ctx* ctx, phasor* p) {
   double diff =  (double)p->freq / (double)ctx->sample_rate;
   p->value += diff;
   if (p->value > 1.0f) p->value -= 1.0f;
@@ -40,7 +40,7 @@ float gen_phasor(cae_ctx* ctx, phasor* p) {
 }
 
 // -- delay --
-delay* new_delay(cae_ctx* ctx) {
+delay* new_delay(cadence_ctx* ctx) {
   delay* d = (delay*)malloc(sizeof(delay)); // @NOTE - hardcoded max buffer size
   d->buf_size = 10*ctx->sample_rate;
   d->buffer = malloc(d->buf_size * sizeof(float));
@@ -84,7 +84,7 @@ float play_sampler(sampler* sr) {
   return sample;
 }
 
-float apply_delay(cae_ctx* ctx, delay* d, float sample, float delay_ms, float feedback) {
+float apply_delay(cadence_ctx* ctx, delay* d, float sample, float delay_ms, float feedback) {
   d->read_offset = delay_ms * ctx->sample_rate; // @NOTE - hardcoded samplerate
   // read from delay buffer
   uint32_t index = (d->write_head - d->read_offset) % d->buf_size;
@@ -98,7 +98,7 @@ float apply_delay(cae_ctx* ctx, delay* d, float sample, float delay_ms, float fe
   return delayed;
 }
 
-int register_gen_table(cae_ctx* ctx, gen_type type) {
+int register_gen_table(cadence_ctx* ctx, gen_type type) {
   fori(gen_table_size) {
     if (ctx->gt[i].type == GEN_FREE) {
       ctx->gt[i].type = type;
@@ -117,15 +117,15 @@ int register_gen_table(cae_ctx* ctx, gen_type type) {
   return -1;
 }
 
-void gen_table_init(cae_ctx* ctx) {
+void gen_table_init(cadence_ctx* ctx) {
   fori(gen_table_size) ctx->gt[i].type = GEN_FREE;
 }
 
-void del_gen_table(cae_ctx* ctx, int i) {
+void del_gen_table(cadence_ctx* ctx, int i) {
   ctx->gt[i].type = GEN_FREE;
 }
 
-void process_gen_table(cae_ctx* ctx) {
+void process_gen_table(cadence_ctx* ctx) {
   fori(gen_table_size) {
     gen_type t = ctx->gt[i].type;
     switch(t) {
@@ -141,14 +141,14 @@ void process_gen_table(cae_ctx* ctx) {
 }
 
 /*
-void write_to_track(cae_ctx* ctx, int n, int i, float sample) {
+void write_to_track(cadence_ctx* ctx, int n, int i, float sample) {
   ctx->tracks[n][2*i]   = sample;
   ctx->tracks[n][2*i+1] = sample;
 }
 */
 
 /*
-void mix_tracks(cae_ctx* ctx) {
+void mix_tracks(cadence_ctx* ctx) {
   fori(ctx->a->info.frames) {
     float sample_l = 0;
     float sample_r = 0;

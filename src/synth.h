@@ -21,7 +21,7 @@ void unset_flag(note* note, note_flags flag);
 int  check_flag(note* note, note_flags flag);
 
 struct synth; // Forward declare 'synth' for osc_t def
-typedef float osc_t (cae_ctx* ctx, struct synth* s, int note_index, note* note);
+typedef float osc_t (cadence_ctx* ctx, struct synth* s, int note_index, note* note);
 
 typedef struct synth {
   osc_t* osc;
@@ -37,4 +37,4 @@ typedef enum note_event {
 
 synth* new_synth(int poly_count, osc_t* osc);
 void   synth_register_note(synth* s, float freq, float amp, note_event event, int key);
-float  play_synth(cae_ctx* ctx, synth* s);
+float  play_synth(cadence_ctx* ctx, synth* s);

@@ -13,18 +13,18 @@
 typedef struct gen_table gen_table;
 
 #define gen_table_size 64
-typedef struct cae_ctx {
+typedef struct cadence_ctx {
   int initialized;
   //float tracks[num_tracks][channels_pr_track*track_size];
   int sample_rate;
   struct gen_table gt[gen_table_size];
-} cae_ctx;
+} cadence_ctx;
 
 // @NOTE - not sure what to do with these
 // void write_to_track(cae_ctx* ctx, int n, int i, float sample);
 // void mix_tracks(cae_ctx* ctx);
 // void write_to_track(cae_ctx* ctx, int n, int i, float sample);
 
-cae_ctx* cadence_setup();
+cadence_ctx* cadence_setup();
 
 #endif

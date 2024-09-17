@@ -6,21 +6,21 @@
 #define STB_VORBIS_HEADER_ONLY
 #include <stb/stb_vorbis.c>
 
-typedef struct cae_ctx cae_ctx;
+typedef struct cadence_ctx cadence_ctx;
 
 typedef struct sine {
   double t;
   float freq;
 } sine;
 sine* new_sine();
-float gen_sine(struct cae_ctx* ctx, sine* sine);
+float gen_sine(struct cadence_ctx* ctx, sine* sine);
 
 typedef struct phasor {
   double value;
   float freq;
 } phasor;
 phasor* new_phasor();
-float gen_phasor(struct cae_ctx* ctx, phasor* p);
+float gen_phasor(struct cadence_ctx* ctx, phasor* p);
 
 typedef struct sampler {
   stb_vorbis* v;
@@ -36,8 +36,8 @@ typedef struct delay {
   uint32_t write_head;
   uint32_t read_offset;
 } delay;
-delay* new_delay(struct cae_ctx* ctx);
-float apply_delay(struct cae_ctx* ctx, delay* d, float sample, float delay_ms, float feedback);
+delay* new_delay(struct cadence_ctx* ctx);
+float apply_delay(struct cadence_ctx* ctx, delay* d, float sample, float delay_ms, float feedback);
 
 
 // -- gen table --
@@ -67,9 +67,9 @@ struct gen_table {
   gen_type type;
   int free;
 };
-void gen_table_init(struct cae_ctx* ctx);
-int  register_gen_table(struct cae_ctx* ctx, gen_type type);
-void del_gen_table(struct cae_ctx* ctx, int i);
-void process_gen_table(struct cae_ctx* ctx);
+void gen_table_init(struct cadence_ctx* ctx);
+int  register_gen_table(struct cadence_ctx* ctx, gen_type type);
+void del_gen_table(struct cadence_ctx* ctx, int i);
+void process_gen_table(struct cadence_ctx* ctx);
 
 #endif

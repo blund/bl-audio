@@ -80,7 +80,7 @@ typedef struct platform_audio_thread_context
 
 ///////////////////////////////////////////////////////////////////////////////
 
-cae_ctx* ctx;
+cadence_ctx* ctx;
 synth* syn;
 delay* d;
 
@@ -359,7 +359,7 @@ int main()
 
 
 // Test osc to demonstrate polyphony
-float test_osc(cae_ctx* ctx, synth* s, int note_index, note* note) {
+float test_osc(cadence_ctx* ctx, synth* s, int note_index, note* note) {
   static int init = 0;
 
   // oscillators for each note
