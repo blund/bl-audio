@@ -46,9 +46,16 @@ float vals[25] = {
 
 osc_t test_osc;
 
+typedef struct program_data {
+  cadence_ctx* ctx;
+
+  synth* s;
+  delay*  d;
+} program_data;
+
 typedef struct platform_program_state
 {
-  cadence_ctx* ctx;
+  program_data* data;
 
   bool IsRunning;
   SDL_Event LastEvent;
@@ -79,22 +86,19 @@ typedef struct platform_audio_thread_context
 
 ///////////////////////////////////////////////////////////////////////////////
 
-synth* syn;
-delay* d;
-
 internal int16_t
-proc_loop(cadence_ctx* ctx)
+proc_loop(program_data* data)
 {
-  if (!ctx->initialized) {
-    syn = new_synth(8, test_osc);
-    d   = new_delay(ctx);
-    ctx->initialized = 1;
+  if (!data->ctx->initialized) {
+    data->s = new_synth(8, test_osc);
+    data->d = new_delay(data->ctx);
+    data->ctx->initialized = 1;
   }
 
-  process_gen_table(ctx);
+  process_gen_table(data->ctx);
 
-  float sample  = play_synth(ctx, syn);
-  float delayed = apply_delay(ctx, d, sample, 0.3, 0.6);
+  float sample  = play_synth(data->ctx, data->s);
+  float delayed = apply_delay(data->ctx, data->d, sample, 0.3, 0.6);
   
   return (int16_t)16768*(sample+delayed);
 }
@@ -103,8 +107,8 @@ proc_loop(cadence_ctx* ctx)
 
 internal void
 SampleIntoAudioBuffer(platform_audio_buffer* AudioBuffer,
-                      int16_t (*GetSample)(cadence_ctx*),
-		      cadence_ctx* ctx)
+                      int16_t (*GetSample)(program_data* data),
+		      program_data* data)
 {
   int Region1Size = AudioBuffer->ReadCursor - AudioBuffer->WriteCursor;
   int Region2Size = 0;
@@ -127,7 +131,7 @@ SampleIntoAudioBuffer(platform_audio_buffer* AudioBuffer,
        SampleIndex < Region1Samples;
        SampleIndex++)
   {
-    int16_t SampleValue = (*GetSample)(ctx);
+    int16_t SampleValue = (*GetSample)(data);
     *Buffer++ = SampleValue;
     *Buffer++ = SampleValue;
     AudioConfig->SampleIndex++;
@@ -138,7 +142,7 @@ SampleIntoAudioBuffer(platform_audio_buffer* AudioBuffer,
        SampleIndex < Region2Samples;
        SampleIndex++)
   {
-    int16_t SampleValue = (*GetSample)(ctx);
+    int16_t SampleValue = (*GetSample)(data);
     *Buffer++ = SampleValue;
     *Buffer++ = SampleValue;
     AudioConfig->SampleIndex++;
@@ -234,7 +238,7 @@ PlatformAudioThread(void* UserData)
   while (AudioThread->ProgramState->IsRunning)
   {
     SDL_LockAudioDevice(AudioThread->AudioBuffer->DeviceID);
-    SampleIntoAudioBuffer(AudioThread->AudioBuffer, &proc_loop, AudioThread->ProgramState->ctx);
+    SampleIntoAudioBuffer(AudioThread->AudioBuffer, &proc_loop, AudioThread->ProgramState->data);
     SDL_UnlockAudioDevice(AudioThread->AudioBuffer->DeviceID);
   }
 
@@ -299,7 +303,8 @@ int main()
 
 
   // Set up cadence context
-  ProgramState.ctx = cadence_setup(44100);
+  ProgramState.data = malloc(sizeof(program_data));
+  ProgramState.data->ctx = cadence_setup(44100);
   
   
   SDL_Event event;
@@ -327,12 +332,12 @@ int main()
 	float freq = 261.63*pow(1.05946309436, key_idx);
 
 	// Make some sound :)
-	synth_register_note(syn, freq, 0.1, NOTE_ON, sym); // Note that notes are keyed by ascii key code (sym)
+	synth_register_note(ProgramState.data->s, freq, 0.1, NOTE_ON, sym); // Note that notes are keyed by ascii key code (sym)
       }
 
       if (event.type == SDL_KEYUP) {
 	int sym = event.key.keysym.sym;
-	synth_register_note(syn, 0, 0, NOTE_OFF, sym);
+	synth_register_note(ProgramState.data->s, 0, 0, NOTE_OFF, sym);
       }
 
       if (event.type == SDL_QUIT) {
