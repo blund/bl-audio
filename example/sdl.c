@@ -48,9 +48,7 @@ float vals[25] = {
   8   // 121 = g#
 };
 
-slot_pair slots[8];
 osc_t test_osc;
-//float test_osc(cae_ctx* ctx, synth* s, float freq, float amp, int index, int* reset, int release);
 
 typedef struct platform_program_state
 {
@@ -312,8 +310,6 @@ int main()
   SDL_Thread* AudioThread = SDL_CreateThread(
     PlatformAudioThread, "Audio", (void*)&AudioThreadContext
   );
-
-  fori(8) slots[i].key = -1;
 
   SDL_Event event = ProgramState.LastEvent;
   while (ProgramState.IsRunning)
