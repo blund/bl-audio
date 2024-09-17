@@ -75,8 +75,8 @@ int* try_release(int key) {
  return NULL;
 }
 
-
-float test_osc(cae_ctx* ctx, synth* s, float freq, float amp, int index, int* reset);
+osc_t test_osc;
+//float test_osc(cae_ctx* ctx, synth* s, float freq, float amp, int index, int* reset, int release);
 
 typedef struct platform_program_state
 {
@@ -128,6 +128,7 @@ cae_loop(platform_audio_config* AudioConfig)
     ctx->a = &a;
 
     syn = new_synth(8, test_osc);
+    syn->release_total_samples = 1000;
     d = new_delay(ctx);
 
     gen_table_init(ctx);
@@ -397,7 +398,7 @@ int main()
 
 
 // Test osc to demonstrate polyphony
-float test_osc(cae_ctx* ctx, synth* s, float freq, float amp, int index, int* reset) {
+float test_osc(cae_ctx* ctx, synth* s, int note_index, note* note) {
   static sine** sines;
   static phasor** phasors;;
   static int init = 0;
@@ -417,19 +418,28 @@ float test_osc(cae_ctx* ctx, synth* s, float freq, float amp, int index, int* re
     ctx->gt[sine_i].p->freq = 8.0;
   }
 
-  if (*reset) {
-    sines[index]->t = 0;
-    phasors[index]->value = 0;
-    *reset = 0;
+  if (note->reset) {
+    sines[note_index]->t = 0;
+    phasors[note_index]->value = 0;
+    note->reset = 0;
   }
 
-  phasors[index]->freq = 8.0f;
-  float phase = gen_phasor(ctx, phasors[index]);
-  amp *= 1.0f-phase;
+  phasors[note_index]->freq = 8.0f;
+  float phase = gen_phasor(ctx, phasors[note_index]);
+  note->amp *= 1.0f-phase;
 
   float mod = ctx->gt[sine_i].val;
 
-  sines[index]->freq = freq;// + 15.0*mod;
-  float sample = 0.2 * gen_sine(ctx, sines[index]);
+  sines[note_index]->freq = note->freq;// + 15.0*mod;
+  float sample = 0.2 * gen_sine(ctx, sines[note_index]);
+
+  if (note->release) {
+    sample *= (float)note->release_remaining_samples / (float)s->release_total_samples;
+    note->release_remaining_samples--;
+    if (note->release_remaining_samples == 0) {
+      note->free = 1;
+    }
+  }
+
   return sample;
 }
