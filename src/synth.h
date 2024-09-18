@@ -9,7 +9,7 @@ typedef enum note_flags {
 
 
 typedef struct note {
-  float freq;
+  int midi_note;
   float amp;
 
   int   key;   // used to identify note on/off-events
@@ -36,5 +36,5 @@ typedef enum note_event {
 } note_event;
 
 synth* new_synth(int poly_count, osc_t* osc);
-void   synth_register_note(synth* s, float freq, float amp, note_event event, int key);
+void   synth_register_note(synth* s, int midi_note, float amp, note_event event);
 float  play_synth(cadence_ctx* ctx, synth* s);

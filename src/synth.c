@@ -17,7 +17,7 @@ int check_flag(note* note, note_flags flag) {
 }
 
 
-void synth_register_note(synth* s, float freq, float amp, note_event event, int key) {
+void synth_register_note(synth* s, int midi_note, float amp, note_event event) {
   if (event == NOTE_ON) {
     fori(s->poly_count) {
       note* n = &s->notes[i];
@@ -27,9 +27,8 @@ void synth_register_note(synth* s, float freq, float amp, note_event event, int 
 	unset_flag(n, NOTE_FREE);
 	unset_flag(n, NOTE_RELEASE);
 
-	n->freq = freq;
+	n->midi_note = midi_note;
 	n->amp  = amp;
-	n->key  = key;
 	return;
       }
     }
@@ -38,7 +37,7 @@ void synth_register_note(synth* s, float freq, float amp, note_event event, int 
   if (event == NOTE_OFF) {
     fori(s->poly_count) {
       note* n = &s->notes[i];
-      if (n->key == key) {
+      if (n->midi_note == midi_note) {
 	set_flag(n, NOTE_RELEASE);
 	return;
       }

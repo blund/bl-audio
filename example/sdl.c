@@ -3,6 +3,7 @@
 #include <stdbool.h>
 
 #include "cadence.h"
+#include "util.h"
 
 #define internal static
 
@@ -17,17 +18,17 @@ static uint32_t SDL_AUDIO_TRANSPARENTLY_CONVERT_FORMAT = 0;
 
 // 97 -> 119;
 float vals[25] = {
-  0,  // 97 = c
+  60, // 97 = c
   -1, // 98
   -1, // 99
-  4,  // 100 = e
-  3,  // 101 = d#
-  5,  // 102 = f
-  7,  // 103 = g
-  9,  // 104 = a
+  64, // 100 = e
+  63, // 101 = d#
+  65, // 102 = f
+  67, // 103 = g
+  69, // 104 = a
   -1, // 105
-  11, // 106 = b
-  12, // 107 = c2
+  71, // 106 = b
+  72, // 107 = c2
   -1, // 108
   -1, // 109
   -1, // 110
@@ -35,13 +36,13 @@ float vals[25] = {
   -1, // 112
   -1, // 113
   -1, // 114
-  2,  // 115 = d
-  6,  // 116 = f#
-  10, // 117 = a#
+  62, // 115 = d
+  66, // 116 = f#
+  70, // 117 = a#
   -1, // 118
-  1,  // 119 = c#
+  61, // 119 = c#
   -1, // 120
-  8   // 121 = g#
+  68  // 121 = g#
 };
 
 osc_t test_osc;
@@ -305,8 +306,7 @@ int main()
   // Set up cadence context
   ProgramState.data = malloc(sizeof(program_data));
   ProgramState.data->ctx = cadence_setup(44100);
-  
-  
+
   SDL_Event event;
   while (ProgramState.IsRunning)
   {
@@ -325,19 +325,16 @@ int main()
 
 	// Clean up the inputs
 	if (sym > 121 | sym < 97) break;
-	int key_idx = vals[sym-97];
-	if (key_idx == -1) break;
-
-	// Find freq for note
-	float freq = 261.63*pow(1.05946309436, key_idx);
-
+	int midi_note = vals[sym-97];
+	if (midi_note == -1) break;
 	// Make some sound :)
-	synth_register_note(ProgramState.data->s, freq, 0.1, NOTE_ON, sym); // Note that notes are keyed by ascii key code (sym)
+	synth_register_note(ProgramState.data->s, midi_note, 0.1, NOTE_ON);
       }
 
       if (event.type == SDL_KEYUP) {
 	int sym = event.key.keysym.sym;
-	synth_register_note(ProgramState.data->s, 0, 0, NOTE_OFF, sym);
+	int midi_note = vals[sym-97];
+	synth_register_note(ProgramState.data->s, midi_note, 0, NOTE_OFF);
       }
 
       if (event.type == SDL_QUIT) {
@@ -409,7 +406,7 @@ float test_osc(cadence_ctx* ctx, synth* s, int note_index, note* note) {
 
   float mod = ctx->gt[sine_i].val;
 
-  sines[note_index]->freq = note->freq;// + 15.0*mod;
+  sines[note_index]->freq = mtof(note->midi_note);// + 15.0*mod;
   float sample = 0.2 * gen_sine(ctx, sines[note_index]);
 
   if (check_flag(note, NOTE_RELEASE)) {
