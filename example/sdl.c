@@ -4,6 +4,7 @@
 
 #include "cadence.h"
 #include "util.h"
+#include "effect.h"
 
 #define internal static
 
@@ -51,7 +52,8 @@ typedef struct program_data {
   cadence_ctx* ctx;
 
   synth* s;
-  delay*  d;
+  delay* d;
+  butlp* butlp;
 } program_data;
 
 typedef struct platform_program_state
@@ -90,16 +92,20 @@ typedef struct platform_audio_thread_context
 internal int16_t
 proc_loop(program_data* data)
 {
-  if (!data->ctx->initialized) {
-    data->s = new_synth(8, test_osc);
-    data->d = new_delay(data->ctx);
+  cadence_ctx* ctx = data->ctx;
+
+  if (!ctx->initialized) {
+    data->s     = new_synth(8, test_osc);
+    data->d     = new_delay(ctx);
+    data->butlp = new_butlp(ctx, 2000);
     data->ctx->initialized = 1;
   }
 
-  process_gen_table(data->ctx);
+  process_gen_table(ctx);
 
-  float sample  = play_synth(data->ctx, data->s);
-  float delayed = apply_delay(data->ctx, data->d, sample, 0.3, 0.6);
+  float sample  = play_synth(ctx, data->s);
+  float delayed = apply_delay(ctx, data->d, sample, 0.3, 0.6);
+  delayed       = apply_butlp(ctx, data->butlp, delayed, 200);
   
   return (int16_t)16768*(sample+delayed);
 }
@@ -360,6 +366,7 @@ int main()
 
 // Test osc to demonstrate polyphony
 float test_osc(cadence_ctx* ctx, synth* s, int note_index, note* note) {
+  // Variables global to all notes
   static int init = 0;
 
   // oscillators for each note
@@ -373,6 +380,8 @@ float test_osc(cadence_ctx* ctx, synth* s, int note_index, note* note) {
   static int release_samples = 5000;
   static int* release_remaining_samples;
 
+
+  // initialize variables (allocate synths, initialize them, set up release
   if (!init) {
     init = 1;
 
@@ -389,9 +398,10 @@ float test_osc(cadence_ctx* ctx, synth* s, int note_index, note* note) {
 
     // and global ones :)
     sine_i = register_gen_table(ctx, GEN_SINE);
-    ctx->gt[sine_i].p->freq = 8.0;
+    ctx->gt[sine_i].p->freq = 3.0;
   }
 
+  // handle note resets
   if (check_flag(note, NOTE_RESET)) {
     sines[note_index]->t = 0;
     phasors[note_index]->value = 0;
@@ -400,15 +410,21 @@ float test_osc(cadence_ctx* ctx, synth* s, int note_index, note* note) {
     unset_flag(note, NOTE_RESET);
   }
 
-  phasors[note_index]->freq = 8.0f;
+  // Update phasor
+  phasors[note_index]->freq = 3.0f;
   float phase = gen_phasor(ctx, phasors[note_index]);
   note->amp *= 1.0f-phase;
 
+  // Load global modulation from gen table
   float mod = ctx->gt[sine_i].val;
 
-  sines[note_index]->freq = mtof(note->midi_note);// + 15.0*mod;
-  float sample = 0.2 * gen_sine(ctx, sines[note_index]);
 
+  // Calculate freq for and set for generator
+  sines[note_index]->freq = mtof(note->midi_note);;
+
+  float sample = 0.2 * mod * gen_sine(ctx, sines[note_index]);
+
+  // Manage release 
   if (check_flag(note, NOTE_RELEASE)) {
     sample *= (float)release_remaining_samples[note_index] / (float)release_samples;
     release_remaining_samples[note_index] -= 1;
