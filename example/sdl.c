@@ -3,8 +3,6 @@
 #include <stdbool.h>
 
 #include "cadence.h"
-#include "util.h"
-#include "effect.h"
 
 #define internal static
 

@@ -39,19 +39,6 @@ float gen_phasor(cadence_ctx* ctx, phasor* p) {
   return p->value;
 }
 
-// -- delay --
-delay* new_delay(cadence_ctx* ctx) {
-  delay* d = (delay*)malloc(sizeof(delay)); // @NOTE - hardcoded max buffer size
-  d->buf_size = 10*ctx->sample_rate;
-  d->buffer = malloc(d->buf_size * sizeof(float));
-
-  // clear out buffer @NOTE - might be unecessary
-  for (int i = 0; i < d->buf_size; i++) {
-    d->buffer[i] = 0;
-  }
-  return d;
-}
-
 sampler* new_sampler() {
   sampler* sr = malloc(sizeof(sampler));
 
@@ -82,20 +69,6 @@ float play_sampler(sampler* sr) {
   if (samples_read == 0) return 0;
 
   return sample;
-}
-
-float apply_delay(cadence_ctx* ctx, delay* d, float sample, float delay_ms, float feedback) {
-  d->read_offset = delay_ms * ctx->sample_rate; // @NOTE - hardcoded samplerate
-  // read from delay buffer
-  uint32_t index = (d->write_head - d->read_offset) % d->buf_size;
-  float delayed  = d->buffer[index];
-
-  // write back + feedback!
-  d->buffer[d->write_head % d->buf_size] = sample + delayed * feedback;
-
-  // increment delay
-  d->write_head++;
-  return delayed;
 }
 
 int register_gen_table(cadence_ctx* ctx, gen_type type) {

@@ -4,6 +4,7 @@
 
 #include "effect.h"
 
+// -- butterworth lowpass filter --
 // Helper function to calculate coefficiients
 static void butlp_set(cadence_ctx* ctx, butlp *filter, float cutoff_freq) {
     float pi = 3.141592653589793;
@@ -34,14 +35,12 @@ static void butlp_set(cadence_ctx* ctx, butlp *filter, float cutoff_freq) {
     filter->cutoff_freq = cutoff_freq;
 }
 
-// Initialize new filter
 butlp* new_butlp(cadence_ctx* ctx, float freq) {
   butlp* filter = malloc(sizeof(butlp));
   butlp_set(ctx, filter, freq);
   return filter;
 }
 
-// Apply filter to samples
 float apply_butlp(cadence_ctx* ctx, butlp *filter, float input, float cutoff_freq) {
   if (filter->cutoff_freq != cutoff_freq) butlp_set(ctx, filter, cutoff_freq);
 
@@ -58,5 +57,32 @@ float apply_butlp(cadence_ctx* ctx, butlp *filter, float input, float cutoff_fre
     filter->y1 = output;
 
     return output;
+}
+
+// -- delay --
+delay* new_delay(cadence_ctx* ctx) {
+  delay* d = (delay*)malloc(sizeof(delay)); // @NOTE - hardcoded max buffer size
+  d->buf_size = 10*ctx->sample_rate;
+  d->buffer = malloc(d->buf_size * sizeof(float));
+
+  // clear out buffer @NOTE - might be unecessary
+  for (int i = 0; i < d->buf_size; i++) {
+    d->buffer[i] = 0;
+  }
+  return d;
+}
+
+float apply_delay(cadence_ctx* ctx, delay* d, float sample, float delay_ms, float feedback) {
+  d->read_offset = delay_ms * ctx->sample_rate; // @NOTE - hardcoded samplerate
+  // read from delay buffer
+  uint32_t index = (d->write_head - d->read_offset) % d->buf_size;
+  float delayed  = d->buffer[index];
+
+  // write back + feedback!
+  d->buffer[d->write_head % d->buf_size] = sample + delayed * feedback;
+
+  // increment delay
+  d->write_head++;
+  return delayed;
 }
 
