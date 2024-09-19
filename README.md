@@ -23,12 +23,11 @@ This project is work in progress, and is created for personal explorations in au
 
 ## Further Work
  - Implement more effects (filters, reverb, etc)
- - Lua scripting layer for creating polyphonic synthesizers
+ - Lua scripting layer
  - Some API cleanup...
  - Mac and Windows platform code
- - More general sample handling (add partial caching, and support more than just one channel...)
 
 ## Credits
-* The base for the SDL platform code is borrowed from [etscrivner](https://github.com/etscrivner/sdl_audio_circular_buffer)
-* Audio files are handled through Sean T. Barret's [stb library](https://github.com/nothings/stb)
-* UI in the example program is made with [Nuklear](https://github.com/Immediate-Mode-UI/Nuklear)
+ - The base for the SDL platform code is borrowed from [etscrivner](https://github.com/etscrivner/sdl_audio_circular_buffer)
+ - Audio files are handled through Sean T. Barret's [stb library](https://github.com/nothings/stb)
+ - UI in the example program is made with [Nuklear](https://github.com/Immediate-Mode-UI/Nuklear)
