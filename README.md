@@ -1,21 +1,25 @@
 # Cadence Audio Engine
-Cadence is a work in progress audio engine, built from scratch.
-
-So far, it features a simple oscillator, a sampler, a delay effect, and the capability of generating polyphonic synthesizers using these components.
-
-It is meant for real time processing and sound generation, such as in games and DAW plugins.
+Cadence is an embeddable library for real-time audio processing and synthesis.
+It is intended to be used for developing digital instruments, DAW plugins and audio for game engines.
 
 ## Running
-So far, it only works on linux, only depending on alsa.
+So far, it only works on linux, depending on [SDL2](https://www.libsdl.org/).
 
-To try it out for yourself, run:
+To try the example program, run:
 
     make example
 
-This should build the static library, and link it with the example program found in ```examples```
+This should open a window running a basic polyphonic synthesizer. To play, use your computer keyboard!
 
 ## Usage
-Don't! This project is very much a work in progress, and is mostly created for myself. Maybe some release down the line will be usable, but not yet :]
+Cadence is designed to be embeddable. This means that the core library is not dependent on the platform it is running on. The general design idea is that the user implements platform code for whatever platform they desire, and can use the same Cadence program across any platform. Cadence simply provides utilities, such as oscillators, effects and a polyphony framework, that can be built into any application.
+
+The example program illustrates how to use Cadence. It is structured so that the user program is compiled as a shared library that is loaded by the platform code. 
+The platform code is not aware of Cadence or its inner workings; it only knows about the program's exposed interface, consisting of ```program_loop``` and ```midi_event``` functions. These functions define how the platform code can interact with the Cadence program.
+
+It is important to note that Cadence is agnostic to how this interaction is done. Cadence *can* be tightly integrated into an application, at the cost of portability. 
+
+This project is work in progress, and is created for personal explorations in audio programming.
 
 ## Further Work
  - Implement more effects (filters, reverb, etc)
