@@ -24,7 +24,7 @@ This project is work in progress, and is created for personal explorations in au
 ## Further Work
  - Implement more effects (filters, reverb, etc)
  - Lua scripting layer
- - Some API cleanup...
+ - Establishing APIs
  - Mac and Windows platform code
 
 ## Credits
