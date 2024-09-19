@@ -1,4 +1,4 @@
-# Cadence Audio Engine
+# Cadence
 Cadence is an embeddable library for real-time audio processing and synthesis.
 It is intended to be used for developing digital instruments, DAW plugins and audio for game engines.
 
