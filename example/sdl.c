@@ -1,3 +1,11 @@
+/*****************************************************************
+ *  sdl.c                                                         *
+ *  Created on 18.09.24                                           *
+ *  By Børge Lundsaunet                                           *
+ *****************************************************************/
+
+
+
 #include <SDL2/SDL.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -6,6 +14,7 @@
 
 #include "library.h"
 #include "load_lib.h"
+
 
 #include "cadence.h"
 
@@ -220,8 +229,21 @@ PlatformAudioThread(void* UserData)
   platform_audio_thread_context* AudioThread =
     (platform_audio_thread_context*)UserData;
 
-  while (AudioThread->ProgramState->IsRunning)
-  {
+  int counter = 0;
+  while (AudioThread->ProgramState->IsRunning)  {
+    if (counter++ % 10000) {
+      time_t last_write = get_last_write(lib_path);
+      if (last_write != lib->last_write) {
+	wait_for_lock();
+
+	int close_result = dlclose(lib->handle);
+
+	load_functions(lib);
+      }
+    }
+
+
+
     SDL_LockAudioDevice(AudioThread->AudioBuffer->DeviceID);
     SampleIntoAudioBuffer(AudioThread->AudioBuffer, lib->functions.program_loop, AudioThread->ProgramState->program_data);
     SDL_UnlockAudioDevice(AudioThread->AudioBuffer->DeviceID);
@@ -298,17 +320,6 @@ int main()
   int counter = 0;
   while (ProgramState.IsRunning)
   {
-    if (counter++ % 10000) {
-      time_t last_write = get_last_write(lib_path);
-      if (last_write != lib->last_write) {
-	//wait_for_lock();
-
-	int close_result = dlclose(lib->handle);
-
-	load_functions(lib);
-      }
-    }
-
     while (SDL_PollEvent(&event))
     {
       if (event.type == SDL_KEYDOWN) {
@@ -322,22 +333,20 @@ int main()
 	if (sym == SDLK_q) ProgramState.IsRunning = 0;
 
 	// Clean up the inputs
-	if (sym > 121 | sym < 97) break;
+	if (sym > 121 | sym < 97) continue;
 	int midi_note = vals[sym-97];
 	if (midi_note == -1) break;
-	// Make some sound :)
 
 	// registrer event, med synth 0, midi-note, vel og note-on
 	lib->functions.midi_event(0, midi_note, 0.1, NOTE_ON);
-	//synth_register_note(ProgramState.data->s, midi_note, 0.1, NOTE_ON);
       }
 
       if (event.type == SDL_KEYUP) {
 	int sym = event.key.keysym.sym;
+	if (sym > 121 | sym < 97) continue;
 	int midi_note = vals[sym-97];
 	// registrer event, med synth 0, midi-note, vel og note-on
 	lib->functions.midi_event(0, midi_note, 0.1, NOTE_OFF);
-	//synth_register_note(ProgramState.data->s, midi_note, 0, NOTE_OFF);
       }
 
       if (event.type == SDL_QUIT) {
