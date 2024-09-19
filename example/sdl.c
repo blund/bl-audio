@@ -2,6 +2,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include <dlfcn.h>
+
+#include "library.h"
+#include "load_lib.h"
+
 #include "cadence.h"
 
 #define internal static
@@ -44,21 +49,21 @@ float vals[25] = {
   68  // 121 = g#
 };
 
-osc_t test_osc;
+library* lib;
 
-typedef struct program_data {
-  cadence_ctx* ctx;
-
-  synth* s;
-  delay* d;
-  butlp* butlp;
-} program_data;
+const char* lib_path = "/home/blund/prosjekt/personlig/cadence/example/program.so";
+void load_functions(library* lib) {
+    load_lib(lib, lib_path);
+    program_loop_t* pl =   (program_loop_t*)dlsym(lib->handle, "program_loop");
+    lib->functions.program_loop = pl;
+    lib->functions.midi_event   = (midi_event_t*)dlsym(lib->handle,   "midi_event");
+}
 
 typedef struct platform_program_state
 {
-  program_data* data;
+  void* program_data;
 
-  bool IsRunning;
+  bool      IsRunning;
   SDL_Event LastEvent;
 } platform_program_state;
 
@@ -83,37 +88,18 @@ typedef struct platform_audio_thread_context
 {
   platform_audio_buffer* AudioBuffer;
   platform_program_state* ProgramState;
+  program_loop_t* program_loop;
 } platform_audio_thread_context;
 
 ///////////////////////////////////////////////////////////////////////////////
-
-internal int16_t
-proc_loop(program_data* data)
-{
-  cadence_ctx* ctx = data->ctx;
-
-  if (!ctx->initialized) {
-    data->s     = new_synth(8, test_osc);
-    data->d     = new_delay(ctx);
-    data->butlp = new_butlp(ctx, 2000);
-    data->ctx->initialized = 1;
-  }
-
-  process_gen_table(ctx);
-
-  float sample  = play_synth(ctx, data->s);
-  float delayed = apply_delay(ctx, data->d, sample, 0.3, 0.6);
-  delayed       = apply_butlp(ctx, data->butlp, delayed, 200);
-  
-  return (int16_t)16768*(sample+delayed);
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 
 internal void
 SampleIntoAudioBuffer(platform_audio_buffer* AudioBuffer,
-                      int16_t (*GetSample)(program_data* data),
-		      program_data* data)
+		      program_loop_t program_loop,
+                      //int16_t (*GetSample)(void* data),
+		      void* data)
 {
   int Region1Size = AudioBuffer->ReadCursor - AudioBuffer->WriteCursor;
   int Region2Size = 0;
@@ -132,22 +118,16 @@ SampleIntoAudioBuffer(platform_audio_buffer* AudioBuffer,
   int BytesWritten   = Region1Size + Region2Size;
 
   int16_t* Buffer = (int16_t*)&AudioBuffer->Buffer[AudioBuffer->WriteCursor];
-  for (int SampleIndex = 0;
-       SampleIndex < Region1Samples;
-       SampleIndex++)
-  {
-    int16_t SampleValue = (*GetSample)(data);
+  for (int SampleIndex = 0; SampleIndex < Region1Samples; SampleIndex++) {
+    int16_t SampleValue = (*program_loop)(data);
     *Buffer++ = SampleValue;
     *Buffer++ = SampleValue;
     AudioConfig->SampleIndex++;
   }
 
   Buffer = (int16_t*)AudioBuffer->Buffer;
-  for (int SampleIndex = 0;
-       SampleIndex < Region2Samples;
-       SampleIndex++)
-  {
-    int16_t SampleValue = (*GetSample)(data);
+  for (int SampleIndex = 0; SampleIndex < Region2Samples; SampleIndex++) {
+    int16_t SampleValue = (*program_loop)(data);
     *Buffer++ = SampleValue;
     *Buffer++ = SampleValue;
     AudioConfig->SampleIndex++;
@@ -243,7 +223,7 @@ PlatformAudioThread(void* UserData)
   while (AudioThread->ProgramState->IsRunning)
   {
     SDL_LockAudioDevice(AudioThread->AudioBuffer->DeviceID);
-    SampleIntoAudioBuffer(AudioThread->AudioBuffer, &proc_loop, AudioThread->ProgramState->data);
+    SampleIntoAudioBuffer(AudioThread->AudioBuffer, lib->functions.program_loop, AudioThread->ProgramState->program_data);
     SDL_UnlockAudioDevice(AudioThread->AudioBuffer->DeviceID);
   }
 
@@ -299,6 +279,13 @@ int main()
   platform_program_state ProgramState = {};
   ProgramState.IsRunning = true;
 
+  // Load library functions
+  lib = malloc(sizeof(library));
+  set_lockfile("/home/blund/prosjekt/personlig/cadence/example/lockfile");
+  set_tmp_path("/home/blund/prosjekt/personlig/cadence/example/tmp.so");
+  load_functions(lib);
+
+  
   platform_audio_thread_context AudioThreadContext = {};
   AudioThreadContext.AudioBuffer = &AudioBuffer;
   AudioThreadContext.ProgramState = &ProgramState;
@@ -307,13 +294,20 @@ int main()
   );
 
 
-  // Set up cadence context
-  ProgramState.data = malloc(sizeof(program_data));
-  ProgramState.data->ctx = cadence_setup(44100);
-
   SDL_Event event;
+  int counter = 0;
   while (ProgramState.IsRunning)
   {
+    if (counter++ % 10000) {
+      time_t last_write = get_last_write(lib_path);
+      if (last_write != lib->last_write) {
+	//wait_for_lock();
+
+	int close_result = dlclose(lib->handle);
+
+	load_functions(lib);
+      }
+    }
 
     while (SDL_PollEvent(&event))
     {
@@ -332,13 +326,18 @@ int main()
 	int midi_note = vals[sym-97];
 	if (midi_note == -1) break;
 	// Make some sound :)
-	synth_register_note(ProgramState.data->s, midi_note, 0.1, NOTE_ON);
+
+	// registrer event, med synth 0, midi-note, vel og note-on
+	lib->functions.midi_event(0, midi_note, 0.1, NOTE_ON);
+	//synth_register_note(ProgramState.data->s, midi_note, 0.1, NOTE_ON);
       }
 
       if (event.type == SDL_KEYUP) {
 	int sym = event.key.keysym.sym;
 	int midi_note = vals[sym-97];
-	synth_register_note(ProgramState.data->s, midi_note, 0, NOTE_OFF);
+	// registrer event, med synth 0, midi-note, vel og note-on
+	lib->functions.midi_event(0, midi_note, 0.1, NOTE_OFF);
+	//synth_register_note(ProgramState.data->s, midi_note, 0, NOTE_OFF);
       }
 
       if (event.type == SDL_QUIT) {
@@ -362,66 +361,3 @@ int main()
 }
 
 
-// Test osc to demonstrate polyphony
-float test_osc(cadence_ctx* ctx, synth* s, int note_index, note* note) {
-  // Variables global to all notes
-  static int init = 0;
-
-  // oscillators for each note
-  static sine** sines;
-  static phasor** phasors;
-
-  // index for oscillator in gen table
-  static int sine_i;
-
-  static adsr_t* adsr_arr;
-
-  // initialize variables (allocate synths, initialize them, set up release
-  if (!init) {
-    init = 1;
-
-    // set up local oscillators
-    sines   = malloc(s->poly_count * sizeof(sine));
-    phasors = malloc(s->poly_count * sizeof(phasor));
-    fori(s->poly_count) sines[i] = new_sine();
-    fori(s->poly_count) phasors[i] = new_phasor();
-
-    // set up adsr
-    adsr_arr  = malloc(s->poly_count * sizeof(adsr_t));
-    fori(s->poly_count) set_line(ctx, &adsr_arr[i].atk, 0.05, 0.0, 1.0);
-    fori(s->poly_count) set_line(ctx, &adsr_arr[i].rel, 0.3, 1.0, 0.0);
-
-    // and global ones :)
-    sine_i = register_gen_table(ctx, GEN_SINE);
-    ctx->gt[sine_i].p->freq = 3.0;
-  }
-
-  // handle note resets
-  if (check_flag(note, NOTE_RESET)) {
-    sines[note_index]->t = 0;
-    phasors[note_index]->value = 0;
-
-    reset_adsr(&adsr_arr[note_index]);
-    
-    unset_flag(note, NOTE_RESET);
-
-  }
-
-  // Update phasor
-  phasors[note_index]->freq = 3.0f;
-  float phase = gen_phasor(ctx, phasors[note_index]);
-  note->amp *= 1.0f-phase;
-
-  // Load global modulation from gen table
-  float mod = ctx->gt[sine_i].val;
-
-  // Calculate freq for and set for generator
-  sines[note_index]->freq = mtof(note->midi_note);;
-
-  int release_finished = 0;
-  float adsr_curve = adsr(&adsr_arr[note_index], check_flag(note, NOTE_RELEASE), &release_finished);
-  if (release_finished) set_flag(note, NOTE_FREE);
-
-  float sample = 0.2 * adsr_curve * mod * gen_sine(ctx, sines[note_index]);
-  return sample;
-}

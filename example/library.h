@@ -1,0 +1,23 @@
+#ifndef CADENCE_LIBRARY_H
+#define CADENCE_LIBRARY_H
+
+#include "stdbool.h"
+#include "time.h"
+
+#include "program.h"
+
+typedef struct library_functions {
+  program_loop_t* program_loop;
+  midi_event_t*   midi_event;
+} library_functions;
+
+typedef struct library {
+  bool is_initialized;
+
+  void* handle;
+  time_t last_write;
+
+  library_functions functions;
+} library;
+
+#endif

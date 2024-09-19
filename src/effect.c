@@ -6,7 +6,7 @@
 
 // -- butterworth lowpass filter --
 // Helper function to calculate coefficiients
-static void butlp_set(cadence_ctx* ctx, butlp *filter, float cutoff_freq) {
+static void butlp_set(cadence_ctx* ctx, butlp_t *filter, float cutoff_freq) {
     float pi = 3.141592653589793;
     float omega = 2 * pi * cutoff_freq / ctx->sample_rate;
     float sin_omega = sin(omega);
@@ -35,13 +35,13 @@ static void butlp_set(cadence_ctx* ctx, butlp *filter, float cutoff_freq) {
     filter->cutoff_freq = cutoff_freq;
 }
 
-butlp* new_butlp(cadence_ctx* ctx, float freq) {
-  butlp* filter = malloc(sizeof(butlp));
+butlp_t* new_butlp(cadence_ctx* ctx, float freq) {
+  butlp_t* filter = malloc(sizeof(butlp_t));
   butlp_set(ctx, filter, freq);
   return filter;
 }
 
-float apply_butlp(cadence_ctx* ctx, butlp *filter, float input, float cutoff_freq) {
+float apply_butlp(cadence_ctx* ctx, butlp_t *filter, float input, float cutoff_freq) {
   if (filter->cutoff_freq != cutoff_freq) butlp_set(ctx, filter, cutoff_freq);
 
     float output = filter->b0 * input +
