@@ -23,3 +23,6 @@ Don't! This project is very much a work in progress, and is mostly created for m
  - Some API cleanup...
  - Mac and Windows platform code
  - More general sample handling (add partial caching, and support more than just one channel...)
+
+## Credits
+The base for the SDL platform code is borrowed from [etscrivner](https://github.com/etscrivner/sdl_audio_circular_buffer)
