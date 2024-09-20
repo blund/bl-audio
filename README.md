@@ -28,6 +28,6 @@ This project is work in progress, and is created for personal explorations in au
  - Mac and Windows platform code
 
 ## Credits
- - The base for the SDL platform code is borrowed from [etscrivner](https://github.com/etscrivner/sdl_audio_circular_buffer)
+ - The base for the SDL platform audio code is borrowed from [etscrivner](https://github.com/etscrivner/sdl_audio_circular_buffer)
  - Audio files are handled through Sean T. Barret's [stb library](https://github.com/nothings/stb)
  - UI in the example program is made with [Nuklear](https://github.com/Immediate-Mode-UI/Nuklear)
