@@ -6,17 +6,42 @@
 
 
 
+#include <GL/glew.h>
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_opengl.h>
+
+
 #include <stdint.h>
 #include <stdbool.h>
 
 #include <dlfcn.h>
 
-#include "library.h"
-#include "load_lib.h"
+#define NK_INCLUDE_FIXED_TYPES
+#define NK_INCLUDE_STANDARD_IO
+#define NK_INCLUDE_STANDARD_VARARGS
+#define NK_INCLUDE_DEFAULT_ALLOCATOR
+#define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
+#define NK_INCLUDE_FONT_BAKING
+#define NK_INCLUDE_DEFAULT_FONT
+#define NK_IMPLEMENTATION
+#define NK_SDL_GL3_IMPLEMENTATION
+#include "nuklear/nuklear.h"
+#include "nuklear/nuklear_sdl_gl3.h"
 
-
+#undef NK_IMPLEMENTATION
 #include "cadence.h"
+#include "load_lib.h"
+#include "library.h"
+
+
+
+#define WINDOW_WIDTH 500
+#define WINDOW_HEIGHT 300
+
+#define MAX_VERTEX_MEMORY 512 * 1024
+#define MAX_ELEMENT_MEMORY 128 * 1024
+
+
 
 #define internal static
 
@@ -60,12 +85,13 @@ float vals[25] = {
 
 library* lib;
 
+// Define program so path and what functions to load
 const char* lib_path = "/home/blund/prosjekt/personlig/cadence/example/program.so";
 void load_functions(library* lib) {
     load_lib(lib, lib_path);
-    program_loop_t* pl =   (program_loop_t*)dlsym(lib->handle, "program_loop");
-    lib->functions.program_loop = pl;
+    lib->functions.program_loop = (program_loop_t*)dlsym(lib->handle, "program_loop");
     lib->functions.midi_event   = (midi_event_t*)dlsym(lib->handle,   "midi_event");
+    lib->functions.draw_gui     = (draw_gui_t*)dlsym(lib->handle,     "draw_gui");
 }
 
 typedef struct platform_program_state
@@ -254,30 +280,77 @@ PlatformAudioThread(void* UserData)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-int main()
+int main(int argc, char *argv[])
 {
+  /* Platform */
+  SDL_Window *win;
+  SDL_GLContext glContext;
+  int win_width, win_height;
+
+  /* GUI */
+  struct nk_context *ctx;
+  struct nk_colorf bg;
+
+
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0)
-  {
-    SDL_Log("Unable to initialized SDL: %s", SDL_GetError());
-    return 1;
+    {
+      SDL_Log("Unable to initialized SDL: %s", SDL_GetError());
+      return 1;
   }
 
-  SDL_Window* Window = SDL_CreateWindow(
-    "Cadence",
-    SDL_WINDOWPOS_UNDEFINED,
-    SDL_WINDOWPOS_UNDEFINED,
-    1280,
-    720,
-    SDL_WINDOW_OPENGL
-  );
+  
+  //SDL_Renderer* Renderer = SDL_CreateRenderer(Window, -1, 0);
 
-  if (!Window)
-  {
+
+  /* Nuklear code */
+  
+  NK_UNUSED(argc);
+  NK_UNUSED(argv);
+
+  /* SDL setup */
+  SDL_SetHint(SDL_HINT_VIDEO_HIGHDPI_DISABLED, "0");
+  SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER|SDL_INIT_EVENTS);
+  SDL_GL_SetAttribute (SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+  SDL_GL_SetAttribute (SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+  SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+  if (!win) {
     SDL_Log("Unable to initialize window: %s", SDL_GetError());
     return 1;
   }
+  win = SDL_CreateWindow("Cadence",
+			 SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+			 WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_OPENGL|SDL_WINDOW_SHOWN|SDL_WINDOW_ALLOW_HIGHDPI);
+  glContext = SDL_GL_CreateContext(win);
+  SDL_GetWindowSize(win, &win_width, &win_height);
 
-  SDL_Renderer* Renderer = SDL_CreateRenderer(Window, -1, 0);
+
+  /* OpenGL setup */
+  glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+  glewExperimental = 1;
+  if (glewInit() != GLEW_OK) {
+    fprintf(stderr, "Failed to setup GLEW\n");
+    exit(1);
+  }
+
+  ctx = nk_sdl_init(win);
+  /* Load Fonts: if none of these are loaded a default font will be used  */
+  /* Load Cursor: if you uncomment cursor loading please hide the cursor */
+  {struct nk_font_atlas *atlas;
+    nk_sdl_font_stash_begin(&atlas);
+    /*struct nk_font *droid = nk_font_atlas_add_from_file(atlas, "../../../extra_font/DroidSans.ttf", 14, 0);*/
+    /*struct nk_font *roboto = nk_font_atlas_add_from_file(atlas, "../../../extra_font/Roboto-Regular.ttf", 16, 0);*/
+    /*struct nk_font *future = nk_font_atlas_add_from_file(atlas, "../../../extra_font/kenvector_future_thin.ttf", 13, 0);*/
+    /*struct nk_font *clean = nk_font_atlas_add_from_file(atlas, "../../../extra_font/ProggyClean.ttf", 12, 0);*/
+    /*struct nk_font *tiny = nk_font_atlas_add_from_file(atlas, "../../../extra_font/ProggyTiny.ttf", 10, 0);*/
+    /*struct nk_font *cousine = nk_font_atlas_add_from_file(atlas, "../../../extra_font/Cousine-Regular.ttf", 13, 0);*/
+    nk_sdl_font_stash_end();
+    /*nk_style_load_all_cursors(ctx, atlas->cursors);*/
+    /*nk_style_set_font(ctx, &roboto->handle);*/}
+
+  /* End of Nuklear code */
+
 
   platform_audio_config AudioConfig = {};
   AudioConfig.SamplesPerSecond = 44100;
@@ -320,6 +393,9 @@ int main()
   int counter = 0;
   while (ProgramState.IsRunning)
   {
+
+
+    nk_input_begin(ctx);
     while (SDL_PollEvent(&event))
     {
       if (event.type == SDL_KEYDOWN) {
@@ -349,20 +425,46 @@ int main()
 	lib->functions.midi_event(0, midi_note, 0.1, NOTE_OFF);
       }
 
+
+
+      
       if (event.type == SDL_QUIT) {
 	ProgramState.IsRunning = 0;
+
+	goto cleanup;
       }
+
+      nk_sdl_handle_event(&event);
     }
 
-    SDL_SetRenderDrawColor(Renderer, 0, 0, 0, 0);
-    SDL_RenderClear(Renderer);
-    SDL_RenderPresent(Renderer);
+    
+    /* Draw */
+    nk_sdl_handle_grab(); /* optional grabbing behavior */
+    nk_input_end(ctx);
+    lib->functions.draw_gui(ctx);
+    nk_end(ctx);
+
+    SDL_GetWindowSize(win, &win_width, &win_height);
+    glViewport(0, 0, win_width, win_height);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glClearColor(bg.r, bg.g, bg.b, bg.a);
+    /* IMPORTANT: `nk_sdl_render` modifies some global OpenGL state
+     * with blending, scissor, face culling, depth test and viewport and
+     * defaults everything back into a default state.
+     * Make sure to either a.) save and restore or b.) reset your own state after
+     * rendering the UI. */
+    nk_sdl_render(NK_ANTI_ALIASING_ON, MAX_VERTEX_MEMORY, MAX_ELEMENT_MEMORY);
+    SDL_GL_SwapWindow(win);
+
   }
+
+ cleanup:
+  nk_sdl_shutdown();
 
   SDL_WaitThread(AudioThread, NULL);
 
-  SDL_DestroyRenderer(Renderer);
-  SDL_DestroyWindow(Window);
+  SDL_GL_DeleteContext(glContext);
+  SDL_DestroyWindow(win);
   SDL_CloseAudioDevice(AudioBuffer.DeviceID);
   SDL_Quit();
 

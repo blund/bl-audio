@@ -17,6 +17,7 @@
 typedef struct library_functions {
   program_loop_t* program_loop;
   midi_event_t*   midi_event;
+  draw_gui_t*     draw_gui;
 } library_functions;
 
 typedef struct library {
