@@ -6,8 +6,7 @@ nuklear.o: nuklear.c
 		-fPIC \
 		-c
 
-.PHONY: lib
-lib: nuklear.o
+program: nuklear.o
 	gcc program.c $(src)/cadence.a nuklear.o \
 		-I$(src) -I$(src)/include -Iinclude \
 		-lm \
@@ -16,10 +15,12 @@ lib: nuklear.o
 	touch program.so.done
 
 
-.PHONY: sdl
-sdl: nuklear.o
+example: nuklear.o
 	gcc sdl.c load_lib.c nuklear.o \
 		-I$(src) -I$(src)/include -Iinclude \
 		-lm -lGLEW -lGL -lGLU -lSDL2 \
 		-ggdb \
-		-o sdl
+		-o example
+
+run: example program nuklear.o
+	./example
