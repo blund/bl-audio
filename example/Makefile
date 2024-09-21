@@ -8,6 +8,7 @@ lib:
 		-I$(src) -I$(src)/include -Iinclude \
 		-lm -lGLEW -lGL -lGLU -lSDL2 \
 		-fPIC -shared -ggdb -o program.so
+	touch program.so.done
 
 .PHONY: sdl
 sdl:

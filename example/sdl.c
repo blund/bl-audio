@@ -29,11 +29,10 @@
 #include "nuklear/nuklear_sdl_gl3.h"
 
 #undef NK_IMPLEMENTATION
-#include "cadence.h"
-#include "load_lib.h"
 #include "library.h"
+#include "load_lib.h"
 
-
+#include "cadence.h"
 
 #define WINDOW_WIDTH 500
 #define WINDOW_HEIGHT 300
@@ -84,15 +83,6 @@ float vals[25] = {
 };
 
 library* lib;
-
-// Define program so path and what functions to load
-const char* lib_path = "/home/blund/prosjekt/personlig/cadence/example/program.so";
-void load_functions(library* lib) {
-    load_lib(lib, lib_path);
-    lib->functions.program_loop = (program_loop_t*)dlsym(lib->handle, "program_loop");
-    lib->functions.midi_event   = (midi_event_t*)dlsym(lib->handle,   "midi_event");
-    lib->functions.draw_gui     = (draw_gui_t*)dlsym(lib->handle,     "draw_gui");
-}
 
 typedef struct platform_program_state
 {
@@ -258,15 +248,9 @@ PlatformAudioThread(void* UserData)
   int counter = 0;
   while (AudioThread->ProgramState->IsRunning)  {
     if (counter++ % 10000) {
-      time_t last_write = get_last_write(lib_path);
-      if (last_write != lib->last_write) {
-	wait_for_lock();
-
-	int close_result = dlclose(lib->handle);
-
-	load_functions(lib);
-      }
+      load_functions(lib);
     }
+  skip_load:
 
 
 
@@ -376,8 +360,9 @@ int main(int argc, char *argv[])
 
   // Load library functions
   lib = malloc(sizeof(library));
-  set_lockfile("/home/blund/prosjekt/personlig/cadence/example/lockfile");
-  set_tmp_path("/home/blund/prosjekt/personlig/cadence/example/tmp.so");
+  lib->handle = 0; // Ensure that malloc makes this val 0 :)
+
+  char* lib_path = "/home/blund/prosjekt/personlig/cadence/example/program.so";
   load_functions(lib);
 
   

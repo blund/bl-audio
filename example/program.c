@@ -52,7 +52,7 @@ PROGRAM_LOOP(program_loop) {
 
     s     = new_synth(8, test_osc);
     d     = new_delay(ctx);
-    butlp = new_butlp(ctx, 2000);
+    butlp = new_butlp(ctx, 1000);
   }
 
   process_gen_table(ctx);

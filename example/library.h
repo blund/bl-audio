@@ -24,7 +24,7 @@ typedef struct library {
   bool is_initialized;
 
   void* handle;
-  time_t last_write;
+  time_t last_write_time;
 
   library_functions functions;
 } library;
