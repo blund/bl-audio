@@ -51,5 +51,6 @@ void load_functions(library* lib) {
   lib->functions.program_loop = (program_loop_t*)dlsym(lib->handle, "program_loop");
   lib->functions.midi_event   = (midi_event_t*)dlsym(lib->handle,   "midi_event");
   lib->functions.draw_gui     = (draw_gui_t*)dlsym(lib->handle,     "draw_gui");
+  puts("[hot reload complete]");
   return;
 }

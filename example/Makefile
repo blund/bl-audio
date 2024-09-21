@@ -6,8 +6,9 @@ src = ../src
 lib:
 	gcc program.c $(src)/cadence.a \
 		-I$(src) -I$(src)/include -Iinclude \
-		-lm -lGLEW -lGL -lGLU -lSDL2 \
-		-fPIC -shared -ggdb -o program.so
+		-lm \
+		-fPIC -shared -ggdb \
+		-o program.so
 	touch program.so.done
 
 .PHONY: sdl

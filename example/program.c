@@ -7,12 +7,9 @@
 
 #include "malloc.h"
 
+
+
 #include <GL/glew.h>
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_opengl.h>
-
-#include "cadence.h"
-
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
 #define NK_INCLUDE_STANDARD_VARARGS
@@ -25,9 +22,11 @@
 #include "nuklear/nuklear.h"
 #include "nuklear/nuklear_sdl_gl3.h"
 
-
+// @NOTE - we must undef to include the header
 #undef NK_IMPLEMENTATION
 #include "program.h"
+
+#include "cadence.h"
 
 cadence_ctx* ctx;
 
