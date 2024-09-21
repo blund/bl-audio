@@ -42,6 +42,11 @@ MIDI_EVENT(midi_event) {
 
 cadence_ctx* ctx = NULL;
 
+float filter_freq = 200;
+
+float delay_s = 0.3f;
+float feedback = 0.6f;
+
 PROGRAM_LOOP(program_loop) {
   if (!ctx) {
     ctx = cadence_setup(44100);
@@ -54,8 +59,8 @@ PROGRAM_LOOP(program_loop) {
   process_gen_table(ctx);
 
   float sample  = play_synth(ctx, s);
-  float delayed = apply_delay(ctx, d, sample, 0.3, 0.6);
-  delayed       = apply_butlp(ctx, butlp, delayed, 200);
+  float delayed = apply_delay(ctx, d, sample, delay_s, feedback/100.0f);
+  delayed       = apply_butlp(ctx, butlp, delayed, filter_freq);
   
   return (int16_t)16768*(sample+delayed);
 }
@@ -70,6 +75,11 @@ DRAW_GUI(draw_gui) {
 	static int op = EASY;
 	static int property = 20;
 
+	nk_layout_row_dynamic(ctx, 22, 1);
+	nk_property_float(ctx, "delay:", 0.0f, &delay_s, 1.0f, 0.01f, 0.01f);
+	nk_layout_row_dynamic(ctx, 22, 1);
+	nk_property_float(ctx, "feedback:", 0.0f, &feedback, 100.0f, 1.0f, 1.0f);
+
 	nk_layout_row_static(ctx, 30, 80, 1);
 	if (nk_button_label(ctx, "button"))
 	  printf("button pressed!\n");
@@ -77,7 +87,7 @@ DRAW_GUI(draw_gui) {
 	if (nk_option_label(ctx, "easy", op == EASY)) op = EASY;
 	if (nk_option_label(ctx, "hard", op == HARD)) op = HARD;
 	nk_layout_row_dynamic(ctx, 22, 1);
-	nk_property_int(ctx, "Compression:", 0, &property, 100, 10, 1);
+	nk_property_float(ctx, "Compression:", 20.0f, &filter_freq, 20000.0f, 0.3f, 1);
 
 	nk_layout_row_dynamic(ctx, 20, 1);
 	nk_label(ctx, "background:", NK_TEXT_LEFT);
