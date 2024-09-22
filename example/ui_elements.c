@@ -1,15 +1,8 @@
-#include <GL/glew.h>
-#define NK_INCLUDE_FIXED_TYPES
-#define NK_INCLUDE_STANDARD_IO
-#define NK_INCLUDE_STANDARD_VARARGS
-#define NK_INCLUDE_DEFAULT_ALLOCATOR
-#define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
-#define NK_INCLUDE_FONT_BAKING
-#define NK_INCLUDE_DEFAULT_FONT
+
+#include <stdio.h>
+#include <math.h>
+
 #include "nuklear/nuklear.h"
-#include "nuklear/nuklear_sdl_gl3.h"
-
-
 
 float nk_log_slider_float(struct nk_context *ctx, float min_log, float max_log, float *value, float min_linear, float max_linear) {
     // Step 1: Convert the current logarithmic value to a linear slider position
