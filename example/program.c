@@ -94,49 +94,23 @@ DRAW_GUI(draw_gui) {
 		 //NK_WINDOW_BORDER|NK_WINDOW_MOVABLE|NK_WINDOW_SCALABLE|
 		 NK_WINDOW_MINIMIZABLE|NK_WINDOW_TITLE|NK_WINDOW_NO_SCROLLBAR))
       {
-	enum {EASY, HARD};
-	static int property = 20;
-
-	// Define value range and default knob value
-	float min_value = 0.0f;
-	float max_value = 100.0f;
-	static float knob_value = 50.0f;  // Default value for the knob
-
-	// Set knob position and size
-	float knob_x = 100.0f;
-	float knob_y = 100.0f;
-	float knob_radius = 50.0f;
-
 	nk_layout_row_static(ctx, 30, 100, 3);
 	if (nk_option_label(ctx, "synth", op == SYNTH)) op = SYNTH;
 	if (nk_option_label(ctx, "sampler", op == SAMPLER)) op = SAMPLER;
 
-	nk_layout_row_static(ctx, 30, 200, 2);
+	nk_layout_row_static(ctx, 10, 0, 1);
+
 	nk_named_lin_slider(ctx, "delay", 0.01, 3, &delay_s);
 	nk_named_lin_slider(ctx, "feedback", 0.1, 100, &feedback);
 	nk_named_log_slider(ctx, "cutoff", 10, 20000, &filter_freq);
     
+	nk_layout_row_static(ctx, 10, 0, 1);
 
-	nk_layout_row_dynamic(ctx, 30, 1);
 	nk_layout_row_static(ctx, 30, 80, 1);
 	if (nk_button_label(ctx, "recompile")) {
 	  puts(" -- [recompiling program code]");
 	  system("make program &");
 	}
-	nk_layout_row_dynamic(ctx, 22, 1);
-
-	/*
-	if (nk_combo_begin_color(ctx, nk_rgb_cf(bg), nk_vec2(nk_widget_width(ctx),400))) {
-	  nk_layout_row_dynamic(ctx, 120, 1);
-	  bg = nk_color_picker(ctx, bg, NK_RGBA);
-	  nk_layout_row_dynamic(ctx, 25, 1);
-	  bg.r = nk_propertyf(ctx, "#R:", 0, bg.r, 1.0f, 0.01f,0.005f);
-	  bg.g = nk_propertyf(ctx, "#G:", 0, bg.g, 1.0f, 0.01f,0.005f);
-	  bg.b = nk_propertyf(ctx, "#B:", 0, bg.b, 1.0f, 0.01f,0.005f);
-	  bg.a = nk_propertyf(ctx, "#A:", 0, bg.a, 1.0f, 0.01f,0.005f);
-	  nk_combo_end(ctx);
-	}
-	*/
       }
 }
 
