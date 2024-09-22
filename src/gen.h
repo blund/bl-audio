@@ -36,6 +36,7 @@ typedef struct sampler {
   stb_vorbis_info vi;
 } sampler;
 sampler* new_sampler();
+int sampler_set_sample(sampler* s, char* sample_path);
 float play_sampler(sampler* sr);
 
 

@@ -8,6 +8,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+
+#include <assert.h>
+
 #include "synth.h"
 
 
@@ -55,6 +58,7 @@ void synth_register_note(synth* s, int midi_note, float amp, note_event event) {
 }
 
 float play_synth(cadence_ctx* ctx, synth* s) {
+  assert(s != NULL);
   float sample = 0;
   fori(s->poly_count) {
     note* n = &s->notes[i];

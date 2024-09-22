@@ -30,6 +30,9 @@ int  check_flag(note* note, note_flags flag);
 struct synth; // Forward declare 'synth' for osc_t def
 typedef float osc_t (cadence_ctx* ctx, struct synth* s, int note_index, note* note);
 
+#define OSC(name) float name (cadence_ctx* ctx, struct synth* s, int note_index, note* note)
+typedef OSC(osc_t);
+
 typedef struct synth {
   osc_t* osc;
 

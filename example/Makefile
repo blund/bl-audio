@@ -7,7 +7,7 @@ nuklear.o: nuklear.c
 		-c
 
 program: nuklear.o
-	gcc program.c $(src)/cadence.a nuklear.o \
+	gcc program.c ui_elements.c $(src)/cadence.a nuklear.o \
 		-I$(src) -I$(src)/include -Iinclude \
 		-lm \
 		-fPIC -shared -ggdb \

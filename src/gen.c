@@ -50,9 +50,10 @@ float gen_phasor(cadence_ctx* ctx, phasor* p) {
 sampler* new_sampler() {
   sampler* sr = malloc(sizeof(sampler));
 
-  int error;
-  stb_vorbis* v = stb_vorbis_open_filename("data/swim7.ogg", &error, &sr->va);
-  stb_vorbis_info vi = stb_vorbis_get_info(v);
+  // @TODO - error handling
+  //int error;
+  //stb_vorbis* v = stb_vorbis_open_filename("data/swim7.ogg", &error, &sr->va);
+  //stb_vorbis_info vi = stb_vorbis_get_info(v);
   //int samples_per_channel = stb_vorbis_stream_length_in_samples(v);
   //int total_samples = samples_per_channel * vi.channels * 2; // ?????
 
@@ -60,9 +61,19 @@ sampler* new_sampler() {
   //float *output = (float *)malloc(sr->total_samples * sizeof(float));
   //int samples_read = stb_vorbis_get_samples_float(v, 1, &output, total_samples);
 
-  sr->v = v;
+  //sr->v = v;
   return sr;
 }
+
+int sampler_set_sample(sampler* s, char* sample_path) {
+  int error;
+  stb_vorbis* v = stb_vorbis_open_filename(sample_path, &error, &s->va);
+  stb_vorbis_info vi = stb_vorbis_get_info(v);
+  s->v = v;
+  return error;
+}
+
+
 
 // -- sampler --
 float play_sampler(sampler* sr) {
