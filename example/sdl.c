@@ -370,7 +370,6 @@ int main(int argc, char *argv[])
 
     counter += 1;
     if (counter == 100) {
-      printf("%d\n", counter);
       load_functions(lib);
       counter = 0;
     }
