@@ -13,5 +13,6 @@
 #include "synth.h"
 #include "effect.h"
 #include "util.h"
+#include "fft.h"
 
 #endif

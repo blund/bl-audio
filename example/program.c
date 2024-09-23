@@ -40,6 +40,10 @@ synth* test_sampler;
 delay* d;
 butlp_t* butlp;
 
+
+int should_fft = 0;
+fft_t fft_obj;
+
 // Global parameters for GUI
 float filter_freq = 400;
 float delay_s = 0.3f;
@@ -69,6 +73,8 @@ PROGRAM_LOOP(program_loop) {
     d     = new_delay(ctx);
     butlp = new_butlp(ctx, 1000);
 
+    new_fft(&fft_obj, 1024);
+
     test_sampler = new_synth(8, sample_player);
   }
 
@@ -84,6 +90,11 @@ PROGRAM_LOOP(program_loop) {
 
   // Mix together stuff
   float mix = sample + delay;
+
+  if (should_fft) {
+    apply_fft(&fft_obj, mix);
+    float mix = apply_ifft(&fft_obj);
+  }
 
   // Return as 16 bit int for the platform layer
   return (int16_t)16768*(mix);
@@ -108,6 +119,12 @@ DRAW_GUI(draw_gui) {
       nk_named_log_slider(ctx, "cutoff", 10, 20000, &filter_freq);
     
       nk_layout_row_static(ctx, 10, 0, 1);
+
+      nk_layout_row_static(ctx, 30, 80, 1);
+      if (nk_checkbox_label(ctx, "fft", &should_fft)) {
+	if (should_fft)  puts("fft on");
+	if (!should_fft) puts("fft off");
+      }
 
       // Button to recompile (and automatically reload) code :)
       nk_layout_row_static(ctx, 30, 80, 1);
