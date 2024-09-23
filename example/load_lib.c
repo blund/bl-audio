@@ -28,7 +28,7 @@ time_t get_write_time(const char* lib_path) {
 void load_functions(library* lib) {
   // Handle initial load
   if (lib->handle == 0) {
-    lib->handle = dlopen(lib->path, RTLD_NOW | RTLD_GLOBAL);
+    lib->handle = dlopen(lib->path, RTLD_LOCAL | RTLD_LAZY);
     lib->last_write_time = get_write_time(lib->done_file);
     goto load_funs;
   }
@@ -39,7 +39,7 @@ void load_functions(library* lib) {
   // If write time is different from last, reload lib
   if (lib->last_write_time != current_write_time) {
     dlclose(lib->handle);
-    lib->handle = dlopen(lib->path, RTLD_NOW | RTLD_GLOBAL);
+    lib->handle = dlopen(lib->path, RTLD_LOCAL | RTLD_LAZY);
     lib->last_write_time = current_write_time;
     goto load_funs;
   }
