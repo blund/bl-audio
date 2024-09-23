@@ -10,7 +10,7 @@ program: nuklear.o
 	gcc program.c ui_elements.c $(src)/cadence.a nuklear.o \
 		-I$(src) -I$(src)/include -Iinclude \
 		-lm \
-		-fPIC -shared -ggdb \
+		-g -fPIC -shared \
 		-o program.so
 	touch program.so.done
 
@@ -20,6 +20,7 @@ example: nuklear.o
 	gcc sdl.c load_lib.c nuklear.o \
 		-I$(src) -I$(src)/include -Iinclude \
 		-lm -lGLEW -lGL -lGLU -lSDL2 \
+		-Wl,-R,'$$ORIGIN'\
 		-ggdb \
 		-o example
 
