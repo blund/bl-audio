@@ -1,4 +1,42 @@
 
+
+/*
+
+  @NOTE!!!!!!!
+
+  When implementing functions that operate on frequency spectra it is important
+  that the function implementation is prefaces by a check as to whether the
+  samples are ready for processing.
+
+  The fft's samples will only be ready for processing when the in_buffer has been
+  filled and the apply_fft function has done its operation.
+  All subsequent spectral effects must be applied after this, before apply_ifft.
+
+  In order to function properly, fft functions should be used as such:
+
+  apply_fft(obj);
+  fft_effect1(obj);
+  fft_effect2(obj);
+  float sample = apply_ifft(obj);
+  
+
+  Here is an example implementation of a spectral effect that multiplies the
+  amplitude of each frequency by 0.5;
+
+void test_process(fft_t* obj) {
+  if (!obj->samples_ready) return;
+  float sr   = 44100;
+  float fft_size = 1024;
+
+  float hz_per_bin = sr/fft_size;
+
+  fori(1024) { obj->real[i] *= 0.5; obj->imag[i] *= 0.5; }
+}
+
+
+
+*/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -31,6 +69,8 @@ typedef struct fft_t {
   f32* real;
   f32* imag;
 } fft_t;
+
+
 
 void new_fft(fft_t* obj, int size) {
   obj->size  = size;
@@ -80,7 +120,7 @@ float apply_ifft(fft_t* obj) {
   // Still buffering the first samples before first full window is filled
   if (obj->stage == FIRST_ITERATION) return 0;
 
-  // If we have a new set of samples ready...
+  // If we have a new set of samples ready, convert these
   if (obj->samples_ready) {
     obj->samples_ready = 0;
     ifft(*obj);

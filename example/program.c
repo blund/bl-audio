@@ -93,7 +93,8 @@ PROGRAM_LOOP(program_loop) {
 
   if (should_fft) {
     apply_fft(&fft_obj, mix);
-    float mix = apply_ifft(&fft_obj);
+    float processed_sample = apply_ifft(&fft_obj);
+    mix = processed_sample;
   }
 
   // Return as 16 bit int for the platform layer
