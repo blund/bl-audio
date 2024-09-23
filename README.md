@@ -23,9 +23,8 @@ This project is work in progress, and is created for personal explorations in au
 
 ## Further Work
  - Implement more effects (filters, reverb, etc)
- - Lua scripting layer
  - Establishing APIs
- - Mac and Windows platform code
+ - Platform code for Teensy, Bela
 
 ## Credits
  - The base for the SDL platform audio code is borrowed from [etscrivner](https://github.com/etscrivner/sdl_audio_circular_buffer)
