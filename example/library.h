@@ -23,6 +23,9 @@ typedef struct library_functions {
 typedef struct library {
   bool is_initialized;
 
+  char* path;
+  char* done_file;
+
   void* handle;
   time_t last_write_time;
 

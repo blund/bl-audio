@@ -19,33 +19,39 @@
 #include "nuklear/nuklear.h"
 #include "nuklear/nuklear_sdl_gl3.h"
 
-// @NOTE - we must undef to include the header
+#define STB_VORBIS_HEADER_ONLY
+#include "stb/stb_vorbis.c"
+
 #include "program.h"
 #include "ui_elements.h"
 
 #include "cadence.h"
 
-#define STB_VORBIS_HEADER_ONLY
-#include "stb/stb_vorbis.c"
 
+// Forward declare oscs used by the synths
+OSC(test_osc);
+OSC(sample_player);
+
+
+// Globals :)
 cadence_ctx* ctx;
-
 synth* s;
 synth* test_sampler;
 delay* d;
 butlp_t* butlp;
 
-typedef struct program_data {
-} program_data;
-
-//osc_t test_osc;
-OSC(test_osc);
-OSC(sample_player);
+// Global parameters for GUI
+float filter_freq = 400;
+float delay_s = 0.3f;
+float feedback = 45.0f;
 
 
+// Switch for which synth to play
 enum {SYNTH, SAMPLER};
 int op = SYNTH;
 
+
+// Midi handler called by the platform layer
 MIDI_EVENT(midi_event) {
   if (op == SYNTH) 
     synth_register_note(s, midi_note, 0.1, event_type);
@@ -53,12 +59,8 @@ MIDI_EVENT(midi_event) {
     synth_register_note(test_sampler, midi_note, 0.1, event_type);
 }
 
-cadence_ctx* ctx = NULL;
 
-float filter_freq = 400;
-float delay_s = 0.3f;
-float feedback = 45.0f;
-
+// Main program loop, generating samples for the platform layer
 PROGRAM_LOOP(program_loop) {
   if (!ctx) {
     ctx = cadence_setup(44100);
@@ -67,57 +69,60 @@ PROGRAM_LOOP(program_loop) {
     d     = new_delay(ctx);
     butlp = new_butlp(ctx, 1000);
 
-
     test_sampler = new_synth(8, sample_player);
   }
 
   process_gen_table(ctx);
 
+  // Play synths
   float sample  = play_synth(ctx, s);
-  sample  += play_synth(ctx, test_sampler);
+  sample       += play_synth(ctx, test_sampler);
 
-
-  
+  // Apply effects
   float filtered = apply_butlp(ctx, butlp, sample, filter_freq);
   float delay    = apply_delay(ctx, d, filtered, delay_s, feedback/100.0f);
 
+  // Mix together stuff
   float mix = sample + delay;
-  
+
+  // Return as 16 bit int for the platform layer
   return (int16_t)16768*(mix);
 }
-float slider_value = 10.0f;  // Default value (logarithmic)
-#include <unistd.h>
-#include <dirent.h>
+
+
+// Define the gui to draw each frame, called by the platform layer
 DRAW_GUI(draw_gui) {
-    /* GUI */
-    if (nk_begin(ctx, "Cadence", nk_rect(0, 0, 800, 500),
-		 //NK_WINDOW_BORDER|NK_WINDOW_MOVABLE|NK_WINDOW_SCALABLE|
-		 NK_WINDOW_MINIMIZABLE|NK_WINDOW_TITLE|NK_WINDOW_NO_SCROLLBAR))
-      {
-	nk_layout_row_static(ctx, 30, 100, 3);
-	if (nk_option_label(ctx, "synth", op == SYNTH)) op = SYNTH;
-	if (nk_option_label(ctx, "sampler", op == SAMPLER)) op = SAMPLER;
+  /* GUI */
+  if (nk_begin(ctx, "Cadence", nk_rect(0, 0, 800, 500), NK_WINDOW_TITLE|NK_WINDOW_NO_SCROLLBAR)) {
 
-	nk_layout_row_static(ctx, 10, 0, 1);
+      // Select what synth to play
+      nk_layout_row_static(ctx, 30, 100, 3);
+      if (nk_option_label(ctx, "synth", op == SYNTH)) op = SYNTH;
+      if (nk_option_label(ctx, "sampler", op == SAMPLER)) op = SAMPLER;
 
-	nk_named_lin_slider(ctx, "delay", 0.01, 3, &delay_s);
-	nk_named_lin_slider(ctx, "feedback", 0.1, 100, &feedback);
-	nk_named_log_slider(ctx, "cutoff", 10, 20000, &filter_freq);
+      nk_layout_row_static(ctx, 10, 0, 1);
+
+      // Delay effect parameters
+      nk_named_lin_slider(ctx, "delay", 0.01, 3, &delay_s);
+      nk_named_lin_slider(ctx, "feedback", 0.1, 100, &feedback);
+      nk_named_log_slider(ctx, "cutoff", 10, 20000, &filter_freq);
     
-	nk_layout_row_static(ctx, 10, 0, 1);
+      nk_layout_row_static(ctx, 10, 0, 1);
 
-	nk_layout_row_static(ctx, 30, 80, 1);
-	if (nk_button_label(ctx, "recompile")) {
-	  puts(" -- [recompiling program code]");
-	  system("make program &");
-	}
+      // Button to recompile (and automatically reload) code :)
+      nk_layout_row_static(ctx, 30, 80, 1);
+      if (nk_button_label(ctx, "recompile")) {
+	puts(" -- [recompiling program code]");
+	system("make program &");
       }
+    }
 }
 
+// Sample player osc, used by synth
 OSC(sample_player) {
   static int init = 0;
-  static sampler* sampler_arr[4];
 
+  static sampler* sampler_arr[4];
   static adsr_t adsr_arr[4];
 
   // Initialize stuff
@@ -139,23 +144,20 @@ OSC(sample_player) {
     init = 1;
   }
 
+  // Decide which sampler to play for this note
   int which = -1;
   switch(note->midi_note) {
   case 60:
-    which = 0;
-    break;
+    which = 0; break;
   case 62:
-    which = 1;
-    break;
+    which = 1; break;
   case 64:
-    which = 2;
-    break;
+    which = 2; break;
   case 65:
-    which = 3;
-    break;
+    which = 3; break;
+  default:
+    return 0;
   }
-
-  if (which == -1) return 0;;
 
   // Handle note resets
   if (check_flag(note, NOTE_RESET)) {
@@ -175,7 +177,8 @@ OSC(sample_player) {
   return sample * adsr_curve;
 }
 
-// Test osc to demonstrate polyphony
+
+// Test osc to demonstrate polyphony, used by synth
 float test_osc(cadence_ctx* ctx, synth* s, int note_index, note* note) {
   // Variables global to all notes
   static int init = 0;

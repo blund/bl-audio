@@ -38,8 +38,6 @@
 #define MAX_VERTEX_MEMORY 512 * 1024
 #define MAX_ELEMENT_MEMORY 128 * 1024
 
-
-
 #define internal static
 
 typedef float Real32;
@@ -358,9 +356,9 @@ int main(int argc, char *argv[])
 
   // Load library functions
   lib = malloc(sizeof(library));
-  lib->handle = 0; // Ensure that malloc makes this val 0 :)
-
-  char* lib_path = "/home/blund/prosjekt/personlig/cadence/example/program.so";
+  lib->handle    = 0; // Ensure that malloc makes this val 0 :)
+  lib->path      = "program.so";
+  lib->done_file = "program.done.so";
   load_functions(lib);
 
   
@@ -376,7 +374,6 @@ int main(int argc, char *argv[])
   int counter = 0;
   while (ProgramState.IsRunning)
   {
-
 
     nk_input_begin(ctx);
     while (SDL_PollEvent(&event))

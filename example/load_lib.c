@@ -11,6 +11,7 @@
 
 #include "load_lib.h"
 
+
 time_t get_write_time(const char* lib_path) {
     struct stat attr;
 
@@ -25,28 +26,27 @@ time_t get_write_time(const char* lib_path) {
 
 // Define program so path and what functions to load
 void load_functions(library* lib) {
-  char* lib_path = "/home/blund/prosjekt/personlig/cadence/example/program.so";
-  char* lib_done = "/home/blund/prosjekt/personlig/cadence/example/program.so.done";
 
   // Handle initial load
   if (lib->handle == 0) {
-    lib->handle = dlopen(lib_path, RTLD_NOW | RTLD_GLOBAL);
-    lib->last_write_time = get_write_time(lib_done);
+    lib->handle = dlopen(lib->path, RTLD_NOW | RTLD_GLOBAL);
+    lib->last_write_time = get_write_time(lib->done_file);
     goto load_funs;
   }
 
   // Check current lib write time
-  time_t current_write_time = get_write_time(lib_done);
+  time_t current_write_time = get_write_time(lib->done_file);
 
   // If write time is different from last, reload lib
   if (lib->last_write_time != current_write_time) {
     dlclose(lib->handle);
-    lib->handle = dlopen(lib_path, RTLD_NOW | RTLD_GLOBAL);
+    lib->handle = dlopen(lib->path, RTLD_NOW | RTLD_GLOBAL);
     lib->last_write_time = current_write_time;
     goto load_funs;
   }
   return;
 
+  // Load program functions for use in platform code
  load_funs:
   lib->functions.program_loop = (program_loop_t*)dlsym(lib->handle, "program_loop");
   lib->functions.midi_event   = (midi_event_t*)dlsym(lib->handle,   "midi_event");
