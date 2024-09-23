@@ -42,6 +42,7 @@ void test_process(fft_t* obj) {
 #include <math.h>
 #include <assert.h>
 #include <limits.h>
+#include <complex.h>
 
 #define i16 int16_t
 #define i64 int64_t
@@ -128,6 +129,23 @@ float apply_ifft(fft_t* obj) {
 
   // return the equivalent of the sample we are writing
   return obj->real[obj->sample_count];
+}
+
+/*
+float complex get_bin(fft_t* obj, int i) {
+  float complex c;
+  return obj->real[i] + obj->imag[i]*I;
+}
+*/
+
+void multiply_bin(fft_t* obj, int i, float val) {
+    int i_sym = obj->size-i;
+
+    obj->real[i] *= val;
+    obj->imag[i] *= val;
+
+    obj->real[i_sym] *= val;
+    obj->imag[i_sym] *= val;
 }
 
 void fft(fft_t signal) {

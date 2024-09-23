@@ -32,4 +32,6 @@ void new_fft(fft_t* obj, int size);
 void apply_fft(fft_t* obj, float sample);
 float apply_ifft(fft_t* obj);
 
+void multiply_bin(fft_t* obj, int i, float val);
+
 #endif

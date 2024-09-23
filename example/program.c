@@ -64,6 +64,18 @@ MIDI_EVENT(midi_event) {
 }
 
 
+void test_fft_process(fft_t* obj) {
+  if (!obj->samples_ready) return;
+  float sr   = 44100;
+  float hz_per_bin = sr/obj->size;
+
+  int bins = obj->size/2;
+  
+  fori(bins) {
+    multiply_bin(obj, i, 0.5);
+  }
+}
+
 // Main program loop, generating samples for the platform layer
 PROGRAM_LOOP(program_loop) {
   if (!ctx) {
@@ -73,7 +85,7 @@ PROGRAM_LOOP(program_loop) {
     d     = new_delay(ctx);
     butlp = new_butlp(ctx, 1000);
 
-    new_fft(&fft_obj, 1024);
+    new_fft(&fft_obj, 512);
 
     test_sampler = new_synth(8, sample_player);
   }
@@ -93,8 +105,8 @@ PROGRAM_LOOP(program_loop) {
 
   if (should_fft) {
     apply_fft(&fft_obj, mix);
-    float processed_sample = apply_ifft(&fft_obj);
-    mix = processed_sample;
+    test_fft_process(&fft_obj);
+    return (int16_t)16768*apply_ifft(&fft_obj);
   }
 
   // Return as 16 bit int for the platform layer
