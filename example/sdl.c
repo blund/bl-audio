@@ -350,8 +350,8 @@ int main(int argc, char *argv[])
   // Load library functions
   lib = malloc(sizeof(library));
   lib->handle    = 0; // Ensure that malloc makes this val 0 :)
-  lib->path      = "/home/blund/prosjekt/personlig/cadence/example/program.so";
-  lib->done_file = "/home/blund/prosjekt/personlig/cadence/example/program.so.done";
+  lib->path      = "program.so";
+  lib->done_file = "program.so.done";
   load_functions(lib);
 
   
@@ -369,8 +369,8 @@ int main(int argc, char *argv[])
   {
 
     counter += 1;
-    if (counter == 50) {
-      //printf("%d\n", counter);
+    if (counter == 100) {
+      printf("%d\n", counter);
       load_functions(lib);
       counter = 0;
     }
