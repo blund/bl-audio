@@ -26,7 +26,6 @@ time_t get_write_time(const char* lib_path) {
 
 // Define program so path and what functions to load
 void load_functions(library* lib) {
-
   // Handle initial load
   if (lib->handle == 0) {
     lib->handle = dlopen(lib->path, RTLD_NOW | RTLD_GLOBAL);

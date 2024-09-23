@@ -243,13 +243,6 @@ PlatformAudioThread(void* UserData)
 
   int counter = 0;
   while (AudioThread->ProgramState->IsRunning)  {
-    if (counter++ % 10000) {
-      load_functions(lib);
-    }
-  skip_load:
-
-
-
     SDL_LockAudioDevice(AudioThread->AudioBuffer->DeviceID);
     SampleIntoAudioBuffer(AudioThread->AudioBuffer, lib->functions.program_loop, AudioThread->ProgramState->program_data);
     SDL_UnlockAudioDevice(AudioThread->AudioBuffer->DeviceID);
@@ -357,8 +350,8 @@ int main(int argc, char *argv[])
   // Load library functions
   lib = malloc(sizeof(library));
   lib->handle    = 0; // Ensure that malloc makes this val 0 :)
-  lib->path      = "program.so";
-  lib->done_file = "program.done.so";
+  lib->path      = "/home/blund/prosjekt/personlig/cadence/example/program.so";
+  lib->done_file = "/home/blund/prosjekt/personlig/cadence/example/program.so.done";
   load_functions(lib);
 
   
@@ -374,6 +367,14 @@ int main(int argc, char *argv[])
   int counter = 0;
   while (ProgramState.IsRunning)
   {
+
+    counter += 1;
+    if (counter == 50) {
+      //printf("%d\n", counter);
+      load_functions(lib);
+      counter = 0;
+    }
+
 
     nk_input_begin(ctx);
     while (SDL_PollEvent(&event))

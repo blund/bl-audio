@@ -15,6 +15,7 @@ program: nuklear.o
 	touch program.so.done
 
 
+.PHONY: example
 example: nuklear.o
 	gcc sdl.c load_lib.c nuklear.o \
 		-I$(src) -I$(src)/include -Iinclude \
