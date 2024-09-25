@@ -43,6 +43,7 @@ butlp_t* butlp;
 
 int should_fft = 0;
 fft_t fft_obj;
+fft_t fft_buf;
 
 // Global parameters for GUI
 float filter_freq = 400;
@@ -86,6 +87,7 @@ PROGRAM_LOOP(program_loop) {
     butlp = new_butlp(ctx, 1000);
 
     new_fft(&fft_obj, 512);
+    new_fft(&fft_buf, 512);
 
     test_sampler = new_synth(8, sample_player);
   }
@@ -105,7 +107,11 @@ PROGRAM_LOOP(program_loop) {
 
   if (should_fft) {
     apply_fft(&fft_obj, mix);
-    test_fft_process(&fft_obj);
+
+    if (fft_obj.samples_ready) {
+      fori(512) fft_obj.buf[i] *= 0.5f; //fft_obj.real[i];
+    }
+
     return (int16_t)16768*apply_ifft(&fft_obj);
   }
 
