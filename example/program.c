@@ -6,7 +6,7 @@
 
 
 #include <stdio.h>
-#include "malloc.h"
+#include <complex.h>
 
 #include <GL/glew.h>
 #define NK_INCLUDE_FIXED_TYPES
@@ -41,9 +41,14 @@ delay* d;
 butlp_t* butlp;
 
 
-int should_fft = 0;
+int should_fft = 1;
+
+// @TODO - Needs mutex :)
 fft_t fft_obj;
-fft_t fft_buf;
+
+
+fft_t fft_tst1;
+fft_t fft_tst2;
 
 // Global parameters for GUI
 float filter_freq = 400;
@@ -87,7 +92,8 @@ PROGRAM_LOOP(program_loop) {
     butlp = new_butlp(ctx, 1000);
 
     new_fft(&fft_obj, 512);
-    new_fft(&fft_buf, 512);
+    new_fft(&fft_tst1, 128);
+    new_fft(&fft_tst2, 512);
 
     test_sampler = new_synth(8, sample_player);
   }
@@ -103,26 +109,25 @@ PROGRAM_LOOP(program_loop) {
   float delay    = apply_delay(ctx, d, filtered, delay_s, feedback/100.0f);
 
   // Mix together stuff
-  float mix = sample + delay;
+  float mix = sample;// + delay;
 
   if (should_fft) {
     apply_fft(&fft_obj, mix);
-
-    if (fft_obj.samples_ready) {
-      fori(512) fft_obj.buf[i] *= 0.5f; //fft_obj.real[i];
-    }
-
-    return (int16_t)16768*apply_ifft(&fft_obj);
+    mix = apply_ifft(&fft_obj);
   }
 
   // Return as 16 bit int for the platform layer
   return (int16_t)16768*(mix);
 }
 
+// bands to display fft data
+int band_count = 64;
+float bands[64];
 
 // Define the gui to draw each frame, called by the platform layer
 DRAW_GUI(draw_gui) {
   /* GUI */
+
   if (nk_begin(ctx, "Cadence", nk_rect(0, 0, 800, 500), NK_WINDOW_TITLE|NK_WINDOW_NO_SCROLLBAR)) {
 
       // Select what synth to play
@@ -144,6 +149,34 @@ DRAW_GUI(draw_gui) {
 	if (should_fft)  puts("fft on");
 	if (!should_fft) puts("fft off");
       }
+
+      nk_layout_row_static(ctx, 60, 200, 1);
+
+
+      // Display spectrum (fix scaling later)
+      if (fft_obj.stage == FIRST_ITERATION_DONE) {
+	int bins = 256;
+
+	// Use geometric series to define how many bins to put in bands.
+	// Uses "band_count" steps, and should add up to "bins";
+	double r = 1.0055;   // Growth rate
+	double a = 0.053; // Initial value
+
+	int running_index = 0;
+	int sum = 0;
+	fori(band_count) {
+	  //float bins_in_band = pow(k,i);
+	  double bins_in_band = a*pow(r, i-1);
+	  bands[i] = 0;
+	  for(int j = 0; j < bins_in_band; j++) {
+	    if (running_index+j > bins) continue;
+	    bands[i] += cabs(fft_obj.pers[running_index+j]);
+	  }
+	  //printf("val: %ff\n", bands[i]);
+	  running_index += (int)ceil(bins_in_band);
+	}
+      }
+      nk_plot(ctx, NK_CHART_COLUMN, bands, 64, 0);
 
       // Button to recompile (and automatically reload) code :)
       nk_layout_row_static(ctx, 30, 80, 1);

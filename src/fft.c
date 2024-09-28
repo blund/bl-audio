@@ -43,6 +43,7 @@ void test_process(fft_t* obj) {
 #include <assert.h>
 #include <limits.h>
 #include <complex.h>
+#include <string.h>
 
 #include "fft.h"
 
@@ -57,9 +58,14 @@ const float pi2 = 6.28318548f;
 
 void new_fft(fft_t* obj, int size) {
   obj->size  = size;
+
+  // These are used for storing the input before processing
   obj->overlap_buf  = malloc(obj->size/2*sizeof(f32));
-  obj->in_buf = malloc(obj->size/2*sizeof(f32));
-  obj->buf = malloc(obj->size*sizeof(f32 complex));
+  obj->in_buf       = malloc(obj->size/2*sizeof(f32));
+
+  // This is where the fft is stored after processed
+  obj->buf          = malloc(obj->size*sizeof(complex float));
+  obj->pers         = malloc(obj->size*sizeof(complex float));
 
   obj->stage = FIRST_ITERATION;
   obj->samples_ready = 0;
@@ -78,7 +84,6 @@ void apply_fft(fft_t* obj, float sample) {
   }
 
   if (obj->sample_count == obj->size/2) {
-    //puts("trigger");
     obj->sample_count = 0;
     if (obj->stage == FIRST_ITERATION) {
       // On first full buffer, just fill the overlap buf
@@ -89,10 +94,10 @@ void apply_fft(fft_t* obj, float sample) {
       // On second full buffer onwards, fill the first and second halves of the real buf as well
       fori(obj->size/2) obj->buf[i] = obj->overlap_buf[i];
       fori(obj->size/2) obj->overlap_buf[i] = obj->buf[i+obj->size/2] = obj->in_buf[i];
-
-      //puts("2:"); fori(obj->size) printf("%-2.0f, ", obj->real[i]); puts("");
-
       fft(*obj);
+
+      // copy to persistent buffer (for stuff like visualization)
+      memcpy(obj->pers, obj->buf, obj->size*sizeof(complex float));
     }
   }
 }
@@ -108,7 +113,7 @@ float apply_ifft(fft_t* obj) {
   }
 
   // return the equivalent of the sample we are writing
-  return obj->buf[obj->sample_count];
+  return creal(obj->buf[obj->sample_count]);
 }
 
 void multiply_bin(fft_t* obj, int i, float val) {
@@ -191,63 +196,3 @@ void hann(fft_t sig, int block_size) {
     sig.buf[i] *= multiplier;
   }
 }
-
-/*
-int main() {
-  
-
-  // Manage full signal
-  int offset = 0;
-  float full_signal[4096];
-  fori(4096) full_signal[i] = i;
-
-  fft_t obj;
-  new_fft(&obj, 32);
-
-  fori(0) {
-    apply_fft(&obj, full_signal[i]);
-
-    float sample = apply_ifft(&obj);
-    printf("%-2.0f, ", sample);
-  }
-  puts("");
-
-  return 0;
-
-  // Første iterasjon: vent på neste sett med samples:
-  fori(obj.size/2) obj.overlap_buf[i] = full_signal[offset + i];
-
-  puts("1:"); fori(obj.size) printf("%-2.0f, ", obj.real[i]); puts("");
-
-  // Andre iterasjon: fyll inn resterende samples, ta vare på de
-  offset += obj.size/2;
-  fori(obj.size/2) obj.real[i] = obj.overlap_buf[i];
-  fori(obj.size/2) obj.overlap_buf[i] = obj.real[i+obj.size/2] = full_signal[offset+i];
-  fft(obj); ifft(obj);
-
-  puts("2:"); fori(obj.size) printf("%-2.0f, ", obj.real[i]); puts("");
-
-  // Tredje iterasjon: kopier forrige samples fra overlap_buffer, lagre nye
-  offset += obj.size/2;
-  fori(obj.size/2) obj.real[i] = obj.overlap_buf[i];
-  fori(obj.size/2) obj.overlap_buf[i] = obj.real[i+obj.size/2] = full_signal[offset+i];
-  fft(obj); ifft(obj);
-  
-  puts("3:"); fori(obj.size) printf("%-2.0f, ", obj.real[i]); puts("");
-
-  // Tredje iterasjon: kopier forrige samples fra overlap_buffer, lagre nye
-  offset += obj.size/2;
-  fori(obj.size/2) obj.real[i] = obj.overlap_buf[i];
-  fori(obj.size/2) obj.overlap_buf[i] = obj.real[i+obj.size/2] = full_signal[offset+i];
-  fft(obj); ifft(obj);
-  
-  puts("4:"); fori(obj.size) printf("%-2.0f, ", obj.real[i]); puts("");
-
-
-  fft(obj);
-  ifft(obj);
-
-  //fori(obj.size) printf("(%.1f), ", obj.real[i]);
-  puts("");
-}
-*/

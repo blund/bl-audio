@@ -26,6 +26,7 @@ typedef struct fft_t {
 
   f32* overlap_buf; // Used for overlap storage
   f32 complex* buf;
+  f32 complex* pers; // persistent fft, is a copy of the fft'd signal. persists when fft is transformed back
 } fft_t;
 
 
