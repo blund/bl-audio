@@ -18,4 +18,4 @@ typedef struct Midi_Note {
   };
 } Midi_Note;
 
-void read_midi_note_from_buf(char buffer[3], Midi_Note* note);
+int read_midi_note_from_buf(unsigned char* buffer, int* index, Midi_Note* note);

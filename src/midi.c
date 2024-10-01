@@ -2,13 +2,22 @@
 #include "midi.h"
 #include "stdio.h"
 
-void read_midi_note_from_buf(char buffer[3], Midi_Note* note){
-	note->message = buffer[0] & 0xf0;
-	note->channel = buffer[0] & 0x0f;
-	note->note = buffer[1];
-	note->vel  = buffer[2];
-}
+int read_midi_note_from_buf(unsigned char* buffer, int* index, Midi_Note* note) {
 
-void test() {
-  printf("bam");
+  int i = *index;
+  
+  while ((buffer[i] & 0xf0) != MIDI_NOTE_ON &&
+	 (buffer[i] & 0xf0) != MIDI_NOTE_OFF) {
+    i += 1;
+    if (i > 32) return 0;
+  }
+
+  note->message = buffer[i] & 0xf0;
+  note->channel = buffer[i] & 0x0f;
+  note->note = buffer[i+1];
+  note->vel  = buffer[i+2];
+
+  *index = i+1;
+
+  return 1;
 }

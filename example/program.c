@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <complex.h>
 
+#include <alsa/asoundlib.h>
+
 #include <GL/glew.h>
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
@@ -26,6 +28,7 @@
 #include "ui_elements.h"
 
 #include "cadence.h"
+#include "midi.h"
 
 
 // Forward declare oscs used by the synths
@@ -82,6 +85,19 @@ void test_fft_process(fft_t* obj) {
   }
 }
 
+snd_rawmidi_t *midi_in;
+int midi_enabled = 0;
+void init_midi() {
+  // Load midi controller
+  int status = snd_rawmidi_open(&midi_in, NULL, "hw:2,0,1", SND_RAWMIDI_NONBLOCK);
+  if (status < 0) {
+    midi_enabled = 0;
+    //fprintf(stderr, "Error opening MIDI input: %s\n", snd_strerror(status));
+    puts("Note: Not using a midi device");
+  }
+  midi_enabled = 1;
+}
+
 // Main program loop, generating samples for the platform layer
 PROGRAM_LOOP(program_loop) {
   if (!ctx) {
@@ -96,8 +112,44 @@ PROGRAM_LOOP(program_loop) {
     new_fft(&fft_tst2, 512);
 
     test_sampler = new_synth(8, sample_player);
+
+    init_midi();
   }
 
+  unsigned char midi_buffer[32];
+  Midi_Note midi; // @NOTE - for some reason this has to be static..
+  if (midi_enabled) {
+    fori(32) midi_buffer[i] = 0;
+    int status = snd_rawmidi_read(midi_in, midi_buffer, 32);
+    if (status > 0) {
+
+      int index = 0;
+      for (;;) {
+	int result = read_midi_note_from_buf(midi_buffer, &index, &midi);
+	if (!result) {
+	  goto gen;
+	}
+	if (midi.message == MIDI_NOTE_ON) {
+	  //puts(" -- note on");
+	  //printf("Note: %x, Vel: %x\n", midi.note, midi.vel);
+	  synth_register_note(s, midi.note, (float)midi.vel/127, NOTE_ON);
+	}
+	if (midi.message == MIDI_NOTE_OFF) {
+	  //puts(" -- note off");
+	  //printf("Note: %x, Vel: %x\n", midi.note, midi.vel);
+	  synth_register_note(s, midi.note, (float)midi.vel/127, NOTE_OFF);
+	}
+	if (midi.message == MIDI_CONTROL_CHANGE) {
+	  //puts(" -- slider");
+	  printf("Controller: %x, Val: %x\n", midi.controller, midi.val);
+	}
+      }
+    }
+  }
+
+ gen:
+
+  
   process_gen_table(ctx);
 
   // Play synths
@@ -109,7 +161,7 @@ PROGRAM_LOOP(program_loop) {
   float delay    = apply_delay(ctx, d, filtered, delay_s, feedback/100.0f);
 
   // Mix together stuff
-  float mix = sample;// + delay;
+  float mix = sample + delay;
 
   if (should_fft) {
     apply_fft(&fft_obj, mix);

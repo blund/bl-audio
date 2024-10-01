@@ -32,7 +32,10 @@ void synth_register_note(synth* s, int midi_note, float amp, note_event event) {
   if (event == NOTE_ON) {
     fori(s->poly_count) {
       note* n = &s->notes[i];
-      if (check_flag(n, NOTE_FREE)) {
+      if (n->midi_note == midi_note) {
+	//puts("warning: got repeat note");
+	unset_flag(n, NOTE_FREE);
+      } else if (check_flag(n, NOTE_FREE)) {
 
 	set_flag(n, NOTE_RESET);
 	unset_flag(n, NOTE_FREE);
@@ -50,10 +53,9 @@ void synth_register_note(synth* s, int midi_note, float amp, note_event event) {
       note* n = &s->notes[i];
       if (n->midi_note == midi_note) {
 	set_flag(n, NOTE_RELEASE);
-	return;
       }
     }
-    puts("warning: got note off on non-existant key");
+    //puts("warning: got note off on non-existant key");
   }
 }
 
