@@ -10,6 +10,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
 
+#include <alsa/asoundlib.h>
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -31,6 +32,7 @@
 #include "load_lib.h"
 
 #include "cadence.h"
+#include "midi.h"
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 500
@@ -79,6 +81,9 @@ float vals[25] = {
 };
 
 library* lib;
+
+snd_rawmidi_t *midi_in;
+int status;
 
 typedef struct platform_program_state
 {
@@ -362,16 +367,49 @@ int main(int argc, char *argv[])
     PlatformAudioThread, "Audio", (void*)&AudioThreadContext
   );
 
-
   SDL_Event event;
   int counter = 0;
+
+  int midi_enabled = 1;
+
+  // Load midi controller
+  status = snd_rawmidi_open(&midi_in, NULL, "hw:2,0,0", SND_RAWMIDI_NONBLOCK);
+  if (status < 0) {
+    midi_enabled = 0;
+    //fprintf(stderr, "Error opening MIDI input: %s\n", snd_strerror(status));
+    puts("Note: Not using a midi device");
+  }
+
+  char midi_buffer[3];
+  static Midi_Note midi; // @NOTE - for some reason this has to be static..
+
   while (ProgramState.IsRunning)
   {
-
     counter += 1;
     if (counter == 100) {
       load_functions(lib);
       counter = 0;
+    }
+
+    if (midi_enabled) {
+      int status = snd_rawmidi_read(midi_in, midi_buffer, 3);
+      if (status > 0) {
+	read_midi_note_from_buf(midi_buffer, &midi);
+	if (midi.message == MIDI_NOTE_ON) {
+	  puts(" -- note on");
+	  printf("Note: %x, Vel: %x\n", midi.note, midi.vel);
+	  lib->functions.midi_event(0, midi.note, (float)midi.vel/127, NOTE_ON);
+	}
+	if (midi.message == MIDI_NOTE_OFF) {
+	  puts(" -- note off");
+	  printf("Note: %x, Vel: %x\n", midi.note, midi.vel);
+	  lib->functions.midi_event(0, midi.note, (float)midi.vel/127, NOTE_OFF);
+	}
+	if (midi.message == MIDI_CONTROL_CHANGE) {
+	  puts(" -- slider");
+	  printf("Controller: %x, Val: %x\n", midi.controller, midi.val);
+	}
+      }
     }
 
 
