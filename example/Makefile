@@ -17,7 +17,7 @@ program: nuklear.o
 
 .PHONY: example
 example: nuklear.o
-	gcc sdl.c load_lib.c nuklear.o $(src)/cadence.a \
+	gcc platform.c load_lib.c nuklear.o $(src)/cadence.a \
 		-I$(src) -I$(src)/include -Iinclude \
 		-lm -lasound -lGLEW -lGL -lGLU -lSDL2 \
 		-Wl,-R,'$$ORIGIN'\
