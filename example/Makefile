@@ -9,7 +9,7 @@ nuklear.o: nuklear.c
 program: nuklear.o
 	gcc program.c ui_elements.c $(src)/cadence.a nuklear.o \
 		-I$(src) -I$(src)/include -Iinclude \
-		-lm -lasound \
+		-lm \
 		-g -fPIC -shared \
 		-o program.so
 	touch program.so.done
