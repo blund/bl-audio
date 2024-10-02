@@ -263,6 +263,7 @@ void init_midi() {
   if (status < 0) {
     midi_enabled = 0;
     puts("Note: Not using a midi device");
+    return;
   }
   midi_enabled = 1;
 }
