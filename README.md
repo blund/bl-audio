@@ -3,7 +3,7 @@ Cadence is an embeddable library for real-time audio processing and synthesis.
 It is intended to be used for developing digital instruments, DAW plugins and audio for game engines.
 
 ## Running
-For now the example program only works on linux, depending on [SDL2](https://www.libsdl.org/).
+For now the example program only works on linux, depending on [SDL2](https://www.libsdl.org/) and ALSA Audio.
 
 To try the example program, execute:
 
