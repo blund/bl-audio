@@ -136,6 +136,7 @@ PROGRAM_LOOP(program_loop) {
     //apply_hann_window(fft_obj.in_buf, 512);
     apply_fft(&fft_obj, mix);
 
+    /*
     if (fft_obj.samples_ready) {
       //high_pass_filter(fft_obj.buf, fft_obj.size, fft_cutoff, 44100);
 
@@ -150,6 +151,7 @@ PROGRAM_LOOP(program_loop) {
 	fft_obj.buf[fft_obj.size-100-i] *= 0.0;
       }
     }
+    */
 
     mix = apply_ifft(&fft_obj);
   }
@@ -162,9 +164,51 @@ PROGRAM_LOOP(program_loop) {
 int band_count = 64;
 float bands[64];
 
+
+int gui_init;
+float samples[1000];
+int sample_count = 100;
+
+void display_waveform(struct nk_context *ctx, float *samples, int sample_count, int index_position) {
+    struct nk_command_buffer *canvas = nk_window_get_canvas(ctx);
+    struct nk_rect bounds = nk_layout_widget_bounds(ctx);
+
+    // Set the range and scale for waveform display
+    float x_scale = bounds.w / (float)sample_count; // Horizontal scale based on sample count
+    float y_scale = bounds.h / 2.0f;                // Vertical scale (waveform centered)
+
+    // Draw the waveform using a series of lines
+    for (int i = 0; i < sample_count - 1; i++) {
+        // Calculate x and y positions for the line segment
+        float x0 = bounds.x + i * x_scale;
+        float y0 = bounds.y + bounds.h / 2 - samples[i] * y_scale;  // Center the waveform vertically
+        float x1 = bounds.x + (i + 1) * x_scale;
+        float y1 = bounds.y + bounds.h / 2 - samples[i + 1] * y_scale;
+
+        // Draw line segment between (x0, y0) and (x1, y1)
+        nk_stroke_line(canvas, x0, y0, x1, y1, 1.0f, nk_rgb(100, 149, 237)); // Red line with 1px thickness
+    }
+
+    // Draw the index line at the specified position
+    if (index_position >= 0 && index_position < sample_count) {
+      float index_x = bounds.x + index_position * x_scale;  // Calculate x position of the index line
+
+      // Draw a vertical line for the index position
+      nk_stroke_line(canvas, index_x, bounds.y+10, index_x, bounds.y + bounds.h-10, 2.0f, nk_rgb(255, 165, 0)); // Blue line with 2px thickness
+    }
+}
+
+int sample_index = 0;
+
 // Define the gui to draw each frame, called by the platform layer
 DRAW_GUI(draw_gui) {
   /* GUI */
+
+  if (!gui_init) {
+    for (int i = 0; i < 100; i++) {
+      samples[i] = (float)sin(2 * 3.1415 * i / 10); // Generate a sine wave for demonstration
+    }
+  }
 
   if (nk_begin(ctx, "Cadence", nk_rect(0, 0, 800, 500), NK_WINDOW_TITLE/*|NK_WINDOW_NO_SCROLLBAR*/)) {
 
@@ -188,6 +232,19 @@ DRAW_GUI(draw_gui) {
 	if (should_fft)  puts("fft on");
 	if (!should_fft) puts("fft off");
       }
+
+      // Define a row layout with 2 columns
+      nk_layout_row_dynamic(ctx, 200, 3);
+
+      // Column 1: Waveform display
+      if (nk_group_begin(ctx, "Waveform Group", NK_WINDOW_NO_SCROLLBAR)) {
+	// Use the waveform display function within the group
+	nk_layout_row_dynamic(ctx, 50, 1);  // One row for the waveform in the group
+	display_waveform(ctx, samples, 100, sample_index);  // Draw waveform within this layout space
+	nk_group_end(ctx);
+      }
+      sample_index++;
+      if (sample_index>100) sample_index = 0;
 
       if (should_fft) {
 	nk_layout_row_static(ctx, 60, 200, 1);
