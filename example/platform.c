@@ -432,6 +432,7 @@ int main(int argc, char *argv[])
 
 	// Check if program should quit
 	if (sym == SDLK_q) ProgramState.IsRunning = 0;
+	if (sym == SDLK_r) system("make program &");
 
 	// Clean up the inputs
 	if (sym > 121 | sym < 97) continue;
