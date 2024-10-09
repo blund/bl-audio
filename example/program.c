@@ -46,7 +46,6 @@ int should_fft = 0;
 // @TODO - Needs mutex :)
 fft_t fft_obj;
 
-
 fft_t fft_tst1;
 fft_t fft_tst2;
 
@@ -130,7 +129,7 @@ PROGRAM_LOOP(program_loop) {
   // Mix together stuff
 
 
-  float mix = sample; //delay;
+  float mix = sample + delay;
 
   if (should_fft) {
 
@@ -237,7 +236,7 @@ DRAW_GUI(draw_gui) {
 OSC(sample_player) {
   static int init = 0;
 
-  static sampler sampler_arr[4];
+  static sampler_t sampler_arr[4];
   static adsr_t adsr_arr[4];
 
   // Initialize stuff
@@ -355,73 +354,60 @@ float test_osc(cadence_ctx* ctx, synth* s, int note_index, note* note) {
   return sample;
 }
 
-/*
-float granular() {
-  sampler* s;
-
-  static int index = 0;
-  static int init = 0;
-  static float grain[4410];
-  if (!init) {
-    s = new_sampler();
-    sampler_set_sample(s,"data/bowl1.ogg");
-    // fill grain
-    stb_vorbis_get_samples_float(s->v, 1, (float**)&grain, 4410);
-    init = 1;
-    //stb_vorbis_seek(s->v, 0);
-  }
-
-  if (index > 4410) return 0;
-
-  //float sample = play_sampler(s);;
-  index++;
-
-  return 0;
-}
-*/
-
-float rand_between(float min, float max) {
-    float scale = rand()/(float)RAND_MAX; /* [0, 1.0] */
-    return min+scale*(max-min);      /* [min, max] */
+int rand_between(int min, int max) {
+  float scale = rand()/(float)RAND_MAX; /* [0, 1.0] */
+  return (int)min+scale*(max-min);      /* [min, max] */
 }
 
 #define GRAIN_SIZE (4410*2)
 
 // Sample player osc, used by synth
 OSC(granular) {
+  typedef struct grain {
+    int index;
+    int end;
+    int released;
+    int retrigger;
+    line_t atk;
+    line_t rel;
+  } grain_t;
+  
   static int init = 0;
 
-  static sampler sampler_arr[4];
-  static adsr_t adsr_arr[4];
+  static sampler_t sampler;
+  static adsr_t adsr_arr[8];
 
-  static int index;
-  static float samples[GRAIN_SIZE];
+  // Buffer to hold the sample we granulate
+  static float buffer[44100*2];
 
-  static int grain_released = 0;
-
-  static int retrigger = 1;
-
-  line_t atk;
-  line_t rel;
+  // Initialize our grains (one per note);
+  static grain_t grains[8] = {{.retrigger = 1},
+			      {.retrigger = 1},
+			      {.retrigger = 1},
+			      {.retrigger = 1}};
 
   // Initialize stuff
   if (!init) {
     // Initialize samplers;
-    //fori(4) sampler_arr[i] = new_sampler();
-    sampler_set_sample(&sampler_arr[0],"data/bowl1.ogg");
-    sampler_set_sample(&sampler_arr[1],"data/bowl2.ogg");
-    sampler_set_sample(&sampler_arr[2],"data/bowl3.ogg");
-    sampler_set_sample(&sampler_arr[3],"data/bowl4.ogg");
-
-    // Set grain cruves
-    set_line(ctx, &atk, 0.1, 0.0, 1.0);
-    set_line(ctx, &rel, 0.01, 1.0, 0.0);
+    sampler_set_sample(&sampler, "data/bowl3.ogg");
 
     // Initialize adsr curves
-    fori(4) {
+    fori(8) {
+      // Initialize grain curves
+      set_line(ctx, &grains[i].atk, 0.15, 0.0, 1.0);
+      set_line(ctx, &grains[i].rel, 0.01, 1.0, 0.0);
+
+      // Initialize note adsrs
       set_line(ctx, &adsr_arr[i].atk, 0.05, 0.0, 1.0);
-      set_line(ctx, &adsr_arr[i].rel, 0.5, 1.0, 0.0);
+      set_line(ctx, &adsr_arr[i].rel, 0.3, 1.0, 0.0);
     }
+
+    // Fill buffer with selection of samples (here at sample 120000, 44100 samples);
+    sampler_seek(&sampler, 100000);
+    fori(44100*2) {
+      buffer[i] = play_sampler(&sampler);
+    }
+
     init = 1;
   }
 
@@ -429,50 +415,51 @@ OSC(granular) {
   if (check_flag(note, NOTE_RESET)) {
     unset_flag(note, NOTE_RESET);
     reset_adsr(&adsr_arr[note_index]);
-    retrigger = 1;
+    grains[note_index].retrigger = 1;
   }
 
   // Start playing new grai
-  if (retrigger) {
-    retrigger = 0;
-    index = 0;
+  if (grains[note_index].retrigger) {
+    grains[note_index].retrigger = 0;
+
+    printf("%d\n", grains[note_index].index);
+    // Chose start for new grain
+    grains[note_index].index = rand_int(0, 44100/2);
+    grains[note_index].end = grains[note_index].index+4410;
 
     // Reset curves
-    reset_line(&atk);
-    reset_line(&rel);
+    reset_line(&grains[note_index].atk);
+    reset_line(&grains[note_index].rel);
 
-    // Chose new sample
-    int sample_index = rand_between(150000, 160000);
-    printf("%d\n", sample_index);
-
-    // Fill buffer with new samples;
-    sampler_seek(&sampler_arr[2], sample_index);
-    fori(GRAIN_SIZE) {
-      samples[i] = play_sampler(&sampler_arr[2]);
-    }
   }
 
-  float sample = 0;
-  if (index <= GRAIN_SIZE) {
-    sample = samples[index];
-    index++;
-  } else {
-    // @TODO - we need to manage grain size vs curve len :)
-  }
 
+  float factor = mtof(note->midi_note)/mtof(60);
+
+  float input_index = grains[note_index].index * factor;
+  int index_int = (int)input_index;
+  float frac = input_index - index_int;
+
+ // Linear interpolation between two adjacent samples
+
+  float sample = lerp(buffer[index_int], buffer[index_int + 1], frac);
+  grains[note_index].index++;
+  if (grains[note_index].index == grains[note_index].end) {
+    grains[note_index].retrigger = 1;
+  }
+  
   // Manage grain curve
-  float curve = line(&atk, &grain_released);
-  if (grain_released) {
+  float curve = line(&grains[note_index].atk, &grains[note_index].released);
+  if (grains[note_index].released) {
     int grain_finished = 0;
-    curve *= line(&rel, &grain_finished);
-    if (grain_finished) retrigger = 1;
+    curve *= line(&grains[note_index].rel, &grain_finished);
+    if (grain_finished) grains[note_index].retrigger = 1;
   }
 
   // Manage adsr curve
   int release_finished = 0;
   float adsr_curve = adsr(&adsr_arr[note_index], check_flag(note, NOTE_RELEASE), &release_finished);
   if (release_finished) set_flag(note, NOTE_FREE);
-
 
   // Mix and play
   return sample * curve * adsr_curve;

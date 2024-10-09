@@ -47,25 +47,7 @@ float gen_phasor(cadence_ctx* ctx, phasor* p) {
   return p->value;
 }
 
-sampler* new_sampler(sampler* s) {
-  sampler* sr = malloc(sizeof(sampler));
-
-  // @TODO - error handling
-  //int error;
-  //stb_vorbis* v = stb_vorbis_open_filename("data/swim7.ogg", &error, &sr->va);
-  //stb_vorbis_info vi = stb_vorbis_get_info(v);
-  //int samples_per_channel = stb_vorbis_stream_length_in_samples(v);
-  //int total_samples = samples_per_channel * vi.channels * 2; // ?????
-
-  //sr->total_samples = samples_per_channel * 1; // * sr->vi.channels;
-  //float *output = (float *)malloc(sr->total_samples * sizeof(float));
-  //int samples_read = stb_vorbis_get_samples_float(v, 1, &output, total_samples);
-
-  //sr->v = v;
-  return sr;
-}
-
-int sampler_set_sample(sampler* s, char* sample_path) {
+int sampler_set_sample(sampler_t* s, char* sample_path) {
   int error;
   stb_vorbis* v = stb_vorbis_open_filename(sample_path, &error, &s->va);
   stb_vorbis_info vi = stb_vorbis_get_info(v);
@@ -73,12 +55,12 @@ int sampler_set_sample(sampler* s, char* sample_path) {
   return error;
 }
 
-int sampler_length(sampler* s) {
+int sampler_length(sampler_t* s) {
   return stb_vorbis_stream_length_in_samples(s->v);
 }
 
 // @API - should errors be handled?
-void sampler_seek(sampler* s, int sample_index) {
+void sampler_seek(sampler_t* s, int sample_index) {
   int len_in_samples = sampler_length(s);
   assert(sample_index < len_in_samples);
   stb_vorbis_seek(s->v, sample_index);
@@ -87,7 +69,7 @@ void sampler_seek(sampler* s, int sample_index) {
 
 
 // -- sampler --
-float play_sampler(sampler* sr) {
+float play_sampler(sampler_t* sr) {
   //float sample = output[sample_index + i];
   //sample *= 0.8;
   //write_to_track(2, i, sample);

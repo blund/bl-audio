@@ -34,15 +34,15 @@ typedef struct sampler {
   stb_vorbis* v;
   stb_vorbis_alloc va;
   stb_vorbis_info vi;
-} sampler;
+} sampler_t;
 
-int sampler_set_sample(sampler* s, char* sample_path);
-float play_sampler(sampler* sr);
+int sampler_set_sample(sampler_t* s, char* sample_path);
+float play_sampler(sampler_t* sr);
 
 // Set sample index for sampler
-void sampler_seek(sampler* s, int sample_index);
+void sampler_seek(sampler_t* s, int sample_index);
 // Get length of currently loaded sample
-int sampler_length(sampler* s); 
+int sampler_length(sampler_t* s); 
 
 // -- gen table --
 /*
