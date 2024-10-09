@@ -11,6 +11,11 @@
 
 #include "context.h"
 float mtof(int midi);
+float lerp(float a, float b, float t);
+
+float rand_float(float min, float max);
+int rand_int(int min, int max);
+
 
 typedef struct line_t {
   float len_samples;

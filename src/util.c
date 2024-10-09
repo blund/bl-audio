@@ -15,6 +15,20 @@ float mtof(int midi) {
   return 440.0f*pow(2, (float)(midi-69.0f) / 12.0f);
 }
 
+float lerp(float a, float b, float t) {
+    return a + (b - a) * t;
+}
+
+int rand_int(int min, int max) {
+  float scale = rand()/(float)RAND_MAX; /* [0, 1.0] */
+  return (int)min+scale*(max-min);      /* [min, max] */
+}
+
+float rand_float(float min, float max) {
+  float scale = rand()/(float)RAND_MAX; /* [0, 1.0] */
+  return min+scale*(max-min);           /* [min, max] */
+}
+
 void set_line(cadence_ctx* ctx, line_t* l, float len_secs, float start, float end) {
   l->len_samples = len_secs*ctx->sample_rate;
   l->rem_samples = len_secs*ctx->sample_rate;
