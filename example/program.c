@@ -30,16 +30,18 @@
 // Forward declare oscs used by the synths
 OSC(test_osc);
 OSC(sample_player);
+OSC(granular);
 
 // Globals :)
 cadence_ctx* ctx;
 synth* s;
+synth* grain_sampler;
 synth* test_sampler;
 delay* d;
 butlp_t* butlp;
 
 
-int should_fft = 1;
+int should_fft = 0;
 
 // @TODO - Needs mutex :)
 fft_t fft_obj;
@@ -55,8 +57,8 @@ float feedback = 45.0f;
 
 
 // Switch for which synth to play
-enum {SYNTH, SAMPLER};
-int op = SYNTH;
+enum {SYNTH, SAMPLER, GRAIN};
+int op = GRAIN;
 
 
 // Midi handler called by the platform layer
@@ -65,6 +67,8 @@ MIDI_EVENT(midi_event) {
     synth_register_note(s, midi_note, 0.1, event_type);
   if (op == SAMPLER) 
     synth_register_note(test_sampler, midi_note, 0.1, event_type);
+  if (op == GRAIN) 
+    synth_register_note(grain_sampler, midi_note, 0.1, event_type);
 }
 
 
@@ -80,6 +84,21 @@ void test_fft_process(fft_t* obj) {
   }
 }
 
+void high_pass_filter(complex float* buf, int fft_size, float cutoff_frequency, float sample_rate) {
+    int cutoff_bin = (int)(cutoff_frequency * fft_size / sample_rate);
+    float transition_width = 3;  // Transition width in bins for smoothing
+
+    // Apply smooth transition for positive frequencies
+    for (int i = 0; i < cutoff_bin; i++) {
+        buf[i] *= 0.0f;
+        buf[fft_size - i] *= 0.0f;
+    }
+}
+
+
+float limit = 0.99;
+float damp   = 0.99;
+float fft_cutoff   = 500.0;
 // Main program loop, generating samples for the platform layer
 PROGRAM_LOOP(program_loop) {
   if (!ctx) {
@@ -89,11 +108,12 @@ PROGRAM_LOOP(program_loop) {
     d     = new_delay(ctx);
     butlp = new_butlp(ctx, 1000);
 
-    new_fft(&fft_obj, 512);
-    new_fft(&fft_tst1, 128);
+    new_fft(&fft_obj, 1024);
+    new_fft(&fft_tst1, 120);
     new_fft(&fft_tst2, 512);
 
     test_sampler = new_synth(8, sample_player);
+    grain_sampler = new_synth(8, granular);
   }
   
   process_gen_table(ctx);
@@ -101,16 +121,37 @@ PROGRAM_LOOP(program_loop) {
   // Play synths
   float sample  = play_synth(ctx, s);
   sample       += play_synth(ctx, test_sampler);
+  sample       += play_synth(ctx, grain_sampler);
 
   // Apply effects
   float filtered = apply_butlp(ctx, butlp, sample, filter_freq);
   float delay    = apply_delay(ctx, d, filtered, delay_s, feedback/100.0f);
 
   // Mix together stuff
+
+
   float mix = sample; //delay;
 
   if (should_fft) {
+
+    //apply_hann_window(fft_obj.in_buf, 512);
     apply_fft(&fft_obj, mix);
+
+    if (fft_obj.samples_ready) {
+      //high_pass_filter(fft_obj.buf, fft_obj.size, fft_cutoff, 44100);
+
+      fori(fft_obj.size/2) {
+	fft_obj.buf[i] *= 0.7;
+	fft_obj.buf[fft_obj.size-i] *= 0.7;
+	// * (fft_obj.size) / i;
+	//fft_obj.buf[fft_obj.size - i] *= 0.7 * fft_obj.size/2 / i;
+      }
+      fori(8) {
+	fft_obj.buf[100+i] *= 0.0;
+	fft_obj.buf[fft_obj.size-100-i] *= 0.0;
+      }
+    }
+
     mix = apply_ifft(&fft_obj);
   }
 
@@ -126,12 +167,13 @@ float bands[64];
 DRAW_GUI(draw_gui) {
   /* GUI */
 
-  if (nk_begin(ctx, "Cadence", nk_rect(0, 0, 800, 500), NK_WINDOW_TITLE|NK_WINDOW_NO_SCROLLBAR)) {
+  if (nk_begin(ctx, "Cadence", nk_rect(0, 0, 800, 500), NK_WINDOW_TITLE/*|NK_WINDOW_NO_SCROLLBAR*/)) {
 
       // Select what synth to play
       nk_layout_row_static(ctx, 30, 100, 3);
-      if (nk_option_label(ctx, "synth", op == SYNTH)) op = SYNTH;
+      if (nk_option_label(ctx, "synth",   op == SYNTH)) op = SYNTH;
       if (nk_option_label(ctx, "sampler", op == SAMPLER)) op = SAMPLER;
+      if (nk_option_label(ctx, "grain",   op == GRAIN)) op = GRAIN;
 
       nk_layout_row_static(ctx, 10, 0, 1);
 
@@ -148,33 +190,39 @@ DRAW_GUI(draw_gui) {
 	if (!should_fft) puts("fft off");
       }
 
-      nk_layout_row_static(ctx, 60, 200, 1);
+      if (should_fft) {
+	nk_layout_row_static(ctx, 60, 200, 1);
 
 
-      // Display spectrum (fix scaling later)
-      if (fft_obj.stage == FIRST_ITERATION_DONE) {
-	int bins = 256;
+	nk_named_lin_slider(ctx, "limit", 0.0, 1.0, &limit);
+	nk_named_lin_slider(ctx, "damp", 0.0, 1.0, &damp);
+	nk_named_log_slider(ctx, "fft_cutoff", 10, 20000, &fft_cutoff);
 
-	// Use geometric series to define how many bins to put in bands.
-	// Uses "band_count" steps, and should add up to "bins";
-	double r = 1.0055;   // Growth rate
-	double a = 0.053; // Initial value
+	// Display spectrum (fix scaling later)
+	if (fft_obj.stage == FIRST_ITERATION_DONE) {
+	  int bins = 256;
 
-	int running_index = 0;
-	int sum = 0;
-	fori(band_count) {
-	  //float bins_in_band = pow(k,i);
-	  double bins_in_band = a*pow(r, i-1);
-	  bands[i] = 0;
-	  for(int j = 0; j < bins_in_band; j++) {
-	    if (running_index+j > bins) continue;
-	    bands[i] += cabs(fft_obj.pers[running_index+j]);
+	  // Use geometric series to define how many bins to put in bands.
+	  // Uses "band_count" steps, and should add up to "bins";
+	  double r = 1.0055;   // Growth rate
+	  double a = 0.053; // Initial value
+
+	  int running_index = 0;
+	  int sum = 0;
+	  fori(band_count) {
+	    //float bins_in_band = pow(k,i);
+	    double bins_in_band = a*pow(r, i-1);
+	    bands[i] = 0;
+	    for(int j = 0; j < bins_in_band; j++) {
+	      if (running_index+j > bins) continue;
+	      bands[i] += cabs(fft_obj.pers[running_index+j]);
+	    }
+	    //printf("val: %ff\n", bands[i]);
+	    running_index += (int)ceil(bins_in_band);
 	  }
-	  //printf("val: %ff\n", bands[i]);
-	  running_index += (int)ceil(bins_in_band);
 	}
+	nk_plot(ctx, NK_CHART_COLUMN, bands, 64, 0);
       }
-      nk_plot(ctx, NK_CHART_COLUMN, bands, 64, 0);
 
       // Button to recompile (and automatically reload) code :)
       nk_layout_row_static(ctx, 30, 80, 1);
@@ -189,18 +237,16 @@ DRAW_GUI(draw_gui) {
 OSC(sample_player) {
   static int init = 0;
 
-  static sampler* sampler_arr[4];
+  static sampler sampler_arr[4];
   static adsr_t adsr_arr[4];
 
   // Initialize stuff
   if (!init) {
     // Initialize samplers;
-    fori(4) sampler_arr[i] = new_sampler();
-    sampler_set_sample(sampler_arr[0],"data/bowl1.ogg");
-    sampler_set_sample(sampler_arr[1],"data/bowl2.ogg");
-    sampler_set_sample(sampler_arr[2],"data/bowl3.ogg");
-    sampler_set_sample(sampler_arr[3],"data/bowl4.ogg");
-
+    sampler_set_sample(&sampler_arr[0],"data/bowl1.ogg");
+    sampler_set_sample(&sampler_arr[1],"data/bowl2.ogg");
+    sampler_set_sample(&sampler_arr[2],"data/bowl3.ogg");
+    sampler_set_sample(&sampler_arr[3],"data/bowl4.ogg");
     
     // Initialize adsr curves
     fori(4) {
@@ -229,7 +275,7 @@ OSC(sample_player) {
   // Handle note resets
   if (check_flag(note, NOTE_RESET)) {
     unset_flag(note, NOTE_RESET);
-    stb_vorbis_seek_start(sampler_arr[which]->v);
+    stb_vorbis_seek_start(sampler_arr[which].v);
     reset_adsr(&adsr_arr[which]);
   }
 
@@ -240,7 +286,7 @@ OSC(sample_player) {
 
 
   // Mix and play
-  float sample = play_sampler(sampler_arr[which]);
+  float sample = play_sampler(&sampler_arr[which]);
   return sample * adsr_curve;
 }
 
@@ -305,6 +351,129 @@ float test_osc(cadence_ctx* ctx, synth* s, int note_index, note* note) {
 
   if (release_finished) set_flag(note, NOTE_FREE);
 
-  float sample = 0.2 * adsr_curve * mod * gen_sine(ctx, sines[note_index]);
+  float sample = 0.2 * adsr_curve * /* mod */ gen_sine(ctx, sines[note_index]);
   return sample;
+}
+
+/*
+float granular() {
+  sampler* s;
+
+  static int index = 0;
+  static int init = 0;
+  static float grain[4410];
+  if (!init) {
+    s = new_sampler();
+    sampler_set_sample(s,"data/bowl1.ogg");
+    // fill grain
+    stb_vorbis_get_samples_float(s->v, 1, (float**)&grain, 4410);
+    init = 1;
+    //stb_vorbis_seek(s->v, 0);
+  }
+
+  if (index > 4410) return 0;
+
+  //float sample = play_sampler(s);;
+  index++;
+
+  return 0;
+}
+*/
+
+float rand_between(float min, float max) {
+    float scale = rand()/(float)RAND_MAX; /* [0, 1.0] */
+    return min+scale*(max-min);      /* [min, max] */
+}
+
+#define GRAIN_SIZE (4410*2)
+
+// Sample player osc, used by synth
+OSC(granular) {
+  static int init = 0;
+
+  static sampler sampler_arr[4];
+  static adsr_t adsr_arr[4];
+
+  static int index;
+  static float samples[GRAIN_SIZE];
+
+  static int grain_released = 0;
+
+  static int retrigger = 1;
+
+  line_t atk;
+  line_t rel;
+
+  // Initialize stuff
+  if (!init) {
+    // Initialize samplers;
+    //fori(4) sampler_arr[i] = new_sampler();
+    sampler_set_sample(&sampler_arr[0],"data/bowl1.ogg");
+    sampler_set_sample(&sampler_arr[1],"data/bowl2.ogg");
+    sampler_set_sample(&sampler_arr[2],"data/bowl3.ogg");
+    sampler_set_sample(&sampler_arr[3],"data/bowl4.ogg");
+
+    // Set grain cruves
+    set_line(ctx, &atk, 0.1, 0.0, 1.0);
+    set_line(ctx, &rel, 0.01, 1.0, 0.0);
+
+    // Initialize adsr curves
+    fori(4) {
+      set_line(ctx, &adsr_arr[i].atk, 0.05, 0.0, 1.0);
+      set_line(ctx, &adsr_arr[i].rel, 0.5, 1.0, 0.0);
+    }
+    init = 1;
+  }
+
+  // Handle note resets
+  if (check_flag(note, NOTE_RESET)) {
+    unset_flag(note, NOTE_RESET);
+    reset_adsr(&adsr_arr[note_index]);
+    retrigger = 1;
+  }
+
+  // Start playing new grai
+  if (retrigger) {
+    retrigger = 0;
+    index = 0;
+
+    // Reset curves
+    reset_line(&atk);
+    reset_line(&rel);
+
+    // Chose new sample
+    int sample_index = rand_between(150000, 160000);
+    printf("%d\n", sample_index);
+
+    // Fill buffer with new samples;
+    sampler_seek(&sampler_arr[2], sample_index);
+    fori(GRAIN_SIZE) {
+      samples[i] = play_sampler(&sampler_arr[2]);
+    }
+  }
+
+  float sample = 0;
+  if (index <= GRAIN_SIZE) {
+    sample = samples[index];
+    index++;
+  } else {
+    // @TODO - we need to manage grain size vs curve len :)
+  }
+
+  // Manage grain curve
+  float curve = line(&atk, &grain_released);
+  if (grain_released) {
+    int grain_finished = 0;
+    curve *= line(&rel, &grain_finished);
+    if (grain_finished) retrigger = 1;
+  }
+
+  // Manage adsr curve
+  int release_finished = 0;
+  float adsr_curve = adsr(&adsr_arr[note_index], check_flag(note, NOTE_RELEASE), &release_finished);
+  if (release_finished) set_flag(note, NOTE_FREE);
+
+
+  // Mix and play
+  return sample * curve * adsr_curve;
 }

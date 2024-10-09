@@ -47,7 +47,7 @@ float gen_phasor(cadence_ctx* ctx, phasor* p) {
   return p->value;
 }
 
-sampler* new_sampler() {
+sampler* new_sampler(sampler* s) {
   sampler* sr = malloc(sizeof(sampler));
 
   // @TODO - error handling
@@ -71,6 +71,17 @@ int sampler_set_sample(sampler* s, char* sample_path) {
   stb_vorbis_info vi = stb_vorbis_get_info(v);
   s->v = v;
   return error;
+}
+
+int sampler_length(sampler* s) {
+  return stb_vorbis_stream_length_in_samples(s->v);
+}
+
+// @API - should errors be handled?
+void sampler_seek(sampler* s, int sample_index) {
+  int len_in_samples = sampler_length(s);
+  assert(sample_index < len_in_samples);
+  stb_vorbis_seek(s->v, sample_index);
 }
 
 
