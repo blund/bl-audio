@@ -15,36 +15,36 @@ typedef enum note_flags {
 } note_flags;
 
 
-typedef struct note {
+typedef struct note_t {
   int midi_note;
   float amp;
 
   int   key;   // used to identify note on/off-events
   int   flags;
-} note;
+} note_t;
 
-void set_flag(note* note, note_flags flag);
-void unset_flag(note* note, note_flags flag);
-int  check_flag(note* note, note_flags flag);
+void set_flag(note_t* note, note_flags flag);
+void unset_flag(note_t* note, note_flags flag);
+int  check_flag(note_t* note, note_flags flag);
 
-struct synth; // Forward declare 'synth' for osc_t def
-typedef float osc_t (cadence_ctx* ctx, struct synth* s, int note_index, note* note);
+struct synth_t; // Forward declare 'synth' for osc_t def
+typedef float osc_t (cadence_ctx* ctx, struct synth_t* s, int note_index, note_t* note);
 
-#define OSC(name) float name (cadence_ctx* ctx, struct synth* s, int note_index, note* note)
+#define OSC(name) float name (cadence_ctx* ctx, struct synth_t* s, int note_index, note_t* note)
 typedef OSC(osc_t);
 
-typedef struct synth {
+typedef struct synth_t {
   osc_t* osc;
 
   int   poly_count;
-  note* notes;
-} synth;
+  note_t* notes;
+} synth_t;
 
 typedef enum note_event {
   NOTE_ON,
   NOTE_OFF,
 } note_event;
 
-synth* new_synth(int poly_count, osc_t* osc);
-void   synth_register_note(synth* s, int midi_note, float amp, note_event event);
-float  play_synth(cadence_ctx* ctx, synth* s);
+synth_t* new_synth(int poly_count, osc_t* osc);
+void   synth_register_note(synth_t* s, int midi_note, float amp, note_event event);
+float  play_synth(cadence_ctx* ctx, synth_t* s);

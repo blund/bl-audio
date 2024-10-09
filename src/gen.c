@@ -14,14 +14,14 @@
 #include "context.h"
 
 // -- sine --
-sine* new_sine() {
-  sine* s = (sine*)malloc(sizeof(sine)); // @NOTE - hardcoded max buffer size
+sine_t* new_sine() {
+  sine_t* s = (sine_t*)malloc(sizeof(sine_t)); // @NOTE - hardcoded max buffer size
   s->t = 0;
   s->freq = 0;
   return s;
 }
 
-float gen_sine(cadence_ctx* ctx, sine* sine) {
+float gen_sine(cadence_ctx* ctx, sine_t* sine) {
   float   wave_period = ctx->sample_rate / sine->freq;
   float   sample      = sin(sine->t);
 
@@ -33,14 +33,14 @@ float gen_sine(cadence_ctx* ctx, sine* sine) {
 
 
 // -- phasor --
-phasor* new_phasor() {
-  phasor* p = (phasor*)malloc(sizeof(phasor)); // @NOTE - hardcoded max buffer size
+phasor_t* new_phasor() {
+  phasor_t* p = (phasor_t*)malloc(sizeof(phasor_t)); // @NOTE - hardcoded max buffer size
   p->value = 0;
   p->freq = 0;
   return p;
 }
 
-float gen_phasor(cadence_ctx* ctx, phasor* p) {
+float gen_phasor(cadence_ctx* ctx, phasor_t* p) {
   double diff =  (double)p->freq / (double)ctx->sample_rate;
   p->value += diff;
   if (p->value > 1.0f) p->value -= 1.0f;

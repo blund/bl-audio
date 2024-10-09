@@ -34,9 +34,9 @@ OSC(granular);
 
 // Globals :)
 cadence_ctx* ctx;
-synth* s;
-synth* grain_sampler;
-synth* test_sampler;
+synth_t* s;
+synth_t* grain_sampler;
+synth_t* test_sampler;
 delay* d;
 butlp_t* butlp;
 
@@ -291,13 +291,13 @@ OSC(sample_player) {
 
 
 // Test osc to demonstrate polyphony, used by synth
-float test_osc(cadence_ctx* ctx, synth* s, int note_index, note* note) {
+OSC(test_osc) {
   // Variables global to all notes
   static int init = 0;
 
   // oscillators for each note
-  static sine** sines;
-  static phasor** phasors;
+  static sine_t** sines;
+  static phasor_t** phasors;
 
   // index for oscillator in gen table
   static int sine_i;
@@ -310,8 +310,8 @@ float test_osc(cadence_ctx* ctx, synth* s, int note_index, note* note) {
     init = 1;
 
     // set up local oscillators
-    sines   = malloc(s->poly_count * sizeof(sine));
-    phasors = malloc(s->poly_count * sizeof(phasor));
+    sines   = malloc(s->poly_count * sizeof(sine_t));
+    phasors = malloc(s->poly_count * sizeof(phasor_t));
     fori(s->poly_count) sines[i] = new_sine();
     fori(s->poly_count) phasors[i] = new_phasor();
 

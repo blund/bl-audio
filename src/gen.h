@@ -16,19 +16,19 @@
 
 typedef struct cadence_ctx cadence_ctx;
 
-typedef struct sine {
+typedef struct sine_t {
   double t;
   float freq;
-} sine;
-sine* new_sine();
-float gen_sine(struct cadence_ctx* ctx, sine* sine);
+} sine_t;
+sine_t* new_sine();
+float gen_sine(struct cadence_ctx* ctx, sine_t* sine);
 
-typedef struct phasor {
+typedef struct phasor_t {
   double value;
   float freq;
-} phasor;
-phasor* new_phasor();
-float gen_phasor(struct cadence_ctx* ctx, phasor* p);
+} phasor_t;
+phasor_t* new_phasor();
+float gen_phasor(struct cadence_ctx* ctx, phasor_t* p);
 
 typedef struct sampler {
   stb_vorbis* v;
@@ -65,8 +65,8 @@ typedef enum gen_type {
 struct gen_table {
   float val;
   union {
-    sine* s;
-    phasor* p;
+    sine_t* s;
+    phasor_t* p;
   };
   gen_type type;
   int free;

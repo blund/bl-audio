@@ -15,23 +15,23 @@
 
 
 // Helper functions to deal with flags
-void set_flag(note* note, note_flags flag) {
+void set_flag(note_t* note, note_flags flag) {
   note->flags |= (1 << flag);
 }
 
-void unset_flag(note* note, note_flags flag) {
+void unset_flag(note_t* note, note_flags flag) {
   note->flags &= ~(1 << flag);
 }
 
-int check_flag(note* note, note_flags flag) {
+int check_flag(note_t* note, note_flags flag) {
   return note->flags & (1 << flag);
 }
 
 
-void synth_register_note(synth* s, int midi_note, float amp, note_event event) {
+void synth_register_note(synth_t* s, int midi_note, float amp, note_event event) {
   if (event == NOTE_ON) {
     fori(s->poly_count) {
-      note* n = &s->notes[i];
+      note_t* n = &s->notes[i];
       if (n->midi_note == midi_note) {
 	//puts("warning: got repeat note");
 	unset_flag(n, NOTE_FREE);
@@ -50,7 +50,7 @@ void synth_register_note(synth* s, int midi_note, float amp, note_event event) {
 
   if (event == NOTE_OFF) {
     fori(s->poly_count) {
-      note* n = &s->notes[i];
+      note_t* n = &s->notes[i];
       if (n->midi_note == midi_note) {
 	set_flag(n, NOTE_RELEASE);
       }
@@ -59,11 +59,11 @@ void synth_register_note(synth* s, int midi_note, float amp, note_event event) {
   }
 }
 
-float play_synth(cadence_ctx* ctx, synth* s) {
+float play_synth(cadence_ctx* ctx, synth_t* s) {
   assert(s != NULL);
   float sample = 0;
   fori(s->poly_count) {
-    note* n = &s->notes[i];
+    note_t* n = &s->notes[i];
     if (!check_flag(n, NOTE_FREE)) {
       sample += s->osc(ctx, s, i, &s->notes[i]);
     }
@@ -71,14 +71,14 @@ float play_synth(cadence_ctx* ctx, synth* s) {
   return sample;
 }
 
-synth* new_synth(int poly_count, osc_t osc){
-  synth* s = malloc(sizeof(synth));
+synth_t* new_synth(int poly_count, osc_t osc){
+  synth_t* s = malloc(sizeof(synth_t));
   s->poly_count = poly_count;
-  s->notes = malloc(s->poly_count*sizeof(note));
+  s->notes = malloc(s->poly_count*sizeof(note_t));
   s->osc = osc;
 
   fori(s->poly_count) {
-    note* n = &s->notes[i];
+    note_t* n = &s->notes[i];
 
     set_flag(n, NOTE_FREE);
     unset_flag(n, NOTE_RESET);
