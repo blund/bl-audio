@@ -4,8 +4,6 @@
  *  By Børge Lundsaunet                                           *
  *****************************************************************/
 
-
-
 #include <stdlib.h>
 #include <math.h>
 #include <assert.h>
@@ -50,7 +48,6 @@ float gen_phasor(cadence_ctx* ctx, phasor_t* p) {
 int sampler_set_sample(sampler_t* s, char* sample_path) {
   int error;
   stb_vorbis* v = stb_vorbis_open_filename(sample_path, &error, &s->va);
-  stb_vorbis_info vi = stb_vorbis_get_info(v);
   s->v = v;
   return error;
 }
