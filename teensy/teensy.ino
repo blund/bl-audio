@@ -9,10 +9,10 @@
   For my own benefit, this example is built using a teensy and its Audio Cape
 */
 
-
 extern "C" {
- #include "src/cadence.h"
+#include "program.h"
 }
+
 
 // Teensy 2.0 has the LED on pin 11
 // Teensy++ 2.0 has the LED on pin 6
@@ -21,8 +21,7 @@ const int ledPin = 13;
 
 // the setup() method runs once, when the sketch starts
 
-cadence_ctx* ctx;
-sine_t* sine;
+program_state state;
 
 void setup() {
   Serial.begin(9600);
@@ -30,18 +29,17 @@ void setup() {
   // initialize the digital pin as an output.
   pinMode(ledPin, OUTPUT);
 
-  ctx = cadence_setup(44100);
-  sine = new_sine();
-  sine->freq = 100.0f;
+  program_setup(&state);
 }
 
 // the loop() methor runs over and over again,
 // as long as the board has power
 
 void loop() {
-  float val = gen_sine(ctx, sine);
-  delay(1);  
-  if (val > 0.5) {
+  program_loop(&state);
+
+  delay(10);  
+  if (state.val > 0.5) {
     digitalWrite(ledPin, HIGH);   // set the LED on
 
   } else {
@@ -49,6 +47,6 @@ void loop() {
        
   }            // wait for a second
   Serial.print("\t output = ");
-  Serial.println(val);
+  Serial.println(state.val);
 }
 
