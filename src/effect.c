@@ -66,8 +66,8 @@ float apply_butlp(cadence_ctx* ctx, butlp_t *filter, float input, float cutoff_f
 }
 
 // -- delay --
-delay* new_delay(cadence_ctx* ctx) {
-  delay* d = (delay*)malloc(sizeof(delay)); // @NOTE - hardcoded max buffer size
+delay_t* new_delay(cadence_ctx* ctx) {
+  delay_t* d = (delay_t*)malloc(sizeof(delay_t)); // @NOTE - hardcoded max buffer size
   d->buf_size = 10*ctx->sample_rate;
   d->buffer = malloc(d->buf_size * sizeof(float));
 
@@ -78,7 +78,7 @@ delay* new_delay(cadence_ctx* ctx) {
   return d;
 }
 
-float apply_delay(cadence_ctx* ctx, delay* d, float sample, float delay_ms, float feedback) {
+float apply_delay(cadence_ctx* ctx, delay_t* d, float sample, float delay_ms, float feedback) {
   d->read_offset = delay_ms * ctx->sample_rate; // @NOTE - hardcoded samplerate
   // read from delay buffer
   uint32_t index = (d->write_head - d->read_offset) % d->buf_size;

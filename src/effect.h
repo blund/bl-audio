@@ -22,13 +22,13 @@ typedef struct butlp_t {
 butlp_t* new_butlp(cadence_ctx* ctx, float freq);
 float apply_butlp(cadence_ctx* ctx, butlp_t *filter, float input, float cutoff_freq);
 
-typedef struct delay {
+typedef struct delay_t {
   float*   buffer;
   uint32_t buf_size;
   uint32_t write_head;
   uint32_t read_offset;
-} delay;
-delay* new_delay(struct cadence_ctx* ctx);
-float apply_delay(struct cadence_ctx* ctx, delay* d, float sample, float delay_ms, float feedback);
+} delay_t;
+delay_t* new_delay(struct cadence_ctx* ctx);
+float apply_delay(struct cadence_ctx* ctx, delay_t* d, float sample, float delay_ms, float feedback);
 
 #endif
