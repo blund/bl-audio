@@ -12,7 +12,7 @@
 #include <stdint.h>
 
 #define STB_VORBIS_HEADER_ONLY
-#include <stb/stb_vorbis.c>
+#include "include/stb/stb_vorbis.c"
 
 typedef struct cadence_ctx cadence_ctx;
 
