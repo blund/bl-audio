@@ -24,6 +24,8 @@ extern "C" {
 // The LED on the Teensy
 int ledPin = 13;
 
+int buttonPin = 0;
+
 // Create the state, which contains the Cadence context, as well as values that are
 // shared between this platform layer and Cadence
 program_state state;
@@ -65,6 +67,9 @@ void setup() {
 
   Serial.begin(9600);
 
+  pinMode(buttonPin, INPUT);
+  pinMode(ledPin, OUTPUT);
+
   // Turn on sound chip
   sgtl5000_1.enable();
   sgtl5000_1.volume(0.2);
@@ -78,13 +83,18 @@ void setup() {
 }
 
 void loop() {
-  delay(10);
-  // Trigger state with the frequency of the sound :)
-  if (state.val > 0.5) {
-    digitalWrite(ledPin, HIGH);   // set the LED on
 
-  } else {
-    digitalWrite(ledPin, LOW);    // set the LED off
+  int button_state = digitalRead(buttonPin);
+
+  if (button_state == HIGH) {
+    state.vol = 1;
   }
+   if (button_state == LOW) {
+    state.vol = 0;
+  }
+
+  digitalWrite(ledPin, button_state);
+  Serial.println(button_state);
+
 }
 

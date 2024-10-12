@@ -10,8 +10,8 @@ void program_setup(program_state*s, int sample_rate) {
 }
 
 int16_t program_loop(program_state* s) {
-  s->val = gen_sine(&s->ctx, &s->sine);
+  float sample = gen_sine(&s->ctx, &s->sine);
   
   // Make sure to get this translation logic correct :)
-  return (int16_t)(s->val*16768.0f);
+  return (int16_t)(sample*16768.0f)*s->vol;
 }
