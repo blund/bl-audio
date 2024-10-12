@@ -11,7 +11,7 @@ compile:
 	@rm src/fft.c   #
 	@touch src/fft.h # needed for the hack!
 
-	arduino-cli compile --fqbn teensy:avr:teensy40 . --output-dir ./build
+	arduino-cli compile -v --fqbn teensy:avr:teensy40 . --output-dir ./build
 
 run:
 	teensy_loader_cli --mcu=TEENSY40 -w ./build/teensy.ino.hex

@@ -13,40 +13,78 @@ extern "C" {
 #include "program.h"
 }
 
+#include <Audio.h>
+#include <Wire.h>
+#include <SD.h>
+#include <SPI.h>
+#include <SerialFlash.h>
+#include <Bounce.h>
+#include "math.h"
 
-// Teensy 2.0 has the LED on pin 11
-// Teensy++ 2.0 has the LED on pin 6
-// Teensy 3.x / Teensy LC have the LED on pin 13
-const int ledPin = 13;
+// The LED on the Teensy
+int ledPin = 13;
 
-// the setup() method runs once, when the sketch starts
-
+// Create the state, which contains the Cadence context, as well as values that are
+// shared between this platform layer and Cadence
 program_state state;
 
+
+// This is the object that wraps Cadence in Teensy's AudioStream object.
+class AudioCadenceEngine : public AudioStream {
+public:
+    AudioCadenceEngine() : AudioStream(0, NULL) { }  // No inputs, only output
+
+    // The update() function will be called regularly by the audio library
+    void update(void) {
+        audio_block_t *block = allocate();  // Allocate a new block of memory to store audio samples
+        if (!block) return;  // If memory allocation fails, return
+
+        // Generate samples
+        for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
+            block->data[i] = program_loop(&state);
+        }
+
+        transmit(block);  // Transmit the block to the audio library
+        release(block);   // Release the memory block
+    }
+};
+
+
+// Declare Cadence Engine object
+AudioCadenceEngine cadence;
+
+// Hook it up to the Teensy Audio system :)
+AudioOutputI2S        i2s1;
+AudioConnection       patchCord1(cadence, 0, i2s1, 0);
+AudioConnection       patchCord2(cadence, 0, i2s1, 1);
+AudioControlSGTL5000  sgtl5000_1;
+
 void setup() {
+  // Initialize audio memory
+  AudioMemory(10);
+
   Serial.begin(9600);
 
-  // initialize the digital pin as an output.
-  pinMode(ledPin, OUTPUT);
+  // Turn on sound chip
+  sgtl5000_1.enable();
+  sgtl5000_1.volume(0.2);
+ 
+  // Initialize Cadence (with project sample rate)
+  program_setup(&state, AUDIO_SAMPLE_RATE);
 
-  program_setup(&state);
+  // Have a small delay before audio starts playing
+  delay(300);
+  
 }
 
-// the loop() methor runs over and over again,
-// as long as the board has power
-
 void loop() {
-  program_loop(&state);
-
-  delay(10);  
+  delay(10);
+  // Trigger state with the frequency of the sound :)
   if (state.val > 0.5) {
     digitalWrite(ledPin, HIGH);   // set the LED on
 
   } else {
     digitalWrite(ledPin, LOW);    // set the LED off
-       
-  }            // wait for a second
-  Serial.print("\t output = ");
-  Serial.println(state.val);
+  }
 }
 
