@@ -12,11 +12,9 @@
 #include "context.h"
 
 // -- sine --
-sine_t* new_sine() {
-  sine_t* s = (sine_t*)malloc(sizeof(sine_t)); // @NOTE - hardcoded max buffer size
+void new_sine(sine_t* s) {
   s->t = 0;
   s->freq = 0;
-  return s;
 }
 
 float gen_sine(cadence_ctx* ctx, sine_t* sine) {
@@ -86,7 +84,7 @@ int register_gen_table(cadence_ctx* ctx, gen_type type) {
       ctx->gt[i].type = type;
       switch(type) {
       case GEN_SINE: {
-	ctx->gt[i].s = new_sine();
+	//ctx->gt[i].s = new_sine();
       } break;
       case GEN_PHASOR: {
 	ctx->gt[i].p = new_phasor();

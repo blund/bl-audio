@@ -4,7 +4,8 @@
  *  By Børge Lundsaunet                                           *
  *****************************************************************/
 
-
+#ifndef SYNTH_H
+#define SYNTH_H
 
 #include "context.h"
 
@@ -37,7 +38,7 @@ typedef struct synth_t {
   osc_t* osc;
 
   int   poly_count;
-  note_t* notes;
+  note_t notes[32];
 } synth_t;
 
 typedef enum note_event {
@@ -45,6 +46,8 @@ typedef enum note_event {
   NOTE_OFF,
 } note_event;
 
-synth_t* new_synth(int poly_count, osc_t* osc);
+void   new_synth(synth_t* synth, int poly_count, osc_t* osc);
 void   synth_register_note(synth_t* s, int midi_note, float amp, note_event event);
 float  play_synth(cadence_ctx* ctx, synth_t* s);
+
+#endif

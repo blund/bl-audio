@@ -20,7 +20,7 @@ typedef struct sine_t {
   double t;
   float freq;
 } sine_t;
-sine_t* new_sine();
+void new_sine(sine_t* s);
 float gen_sine(struct cadence_ctx* ctx, sine_t* sine);
 
 typedef struct phasor_t {

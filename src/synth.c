@@ -35,8 +35,9 @@ void synth_register_note(synth_t* s, int midi_note, float amp, note_event event)
       if (n->midi_note == midi_note) {
 	//puts("warning: got repeat note");
 	unset_flag(n, NOTE_FREE);
-      } else if (check_flag(n, NOTE_FREE)) {
+      }
 
+      if (check_flag(n, NOTE_FREE)) {
 	set_flag(n, NOTE_RESET);
 	unset_flag(n, NOTE_FREE);
 	unset_flag(n, NOTE_RELEASE);
@@ -71,10 +72,8 @@ float play_synth(cadence_ctx* ctx, synth_t* s) {
   return sample;
 }
 
-synth_t* new_synth(int poly_count, osc_t osc){
-  synth_t* s = malloc(sizeof(synth_t));
+void new_synth(synth_t* s, int poly_count, osc_t osc){
   s->poly_count = poly_count;
-  s->notes = malloc(s->poly_count*sizeof(note_t));
   s->osc = osc;
 
   fori(s->poly_count) {
@@ -84,5 +83,4 @@ synth_t* new_synth(int poly_count, osc_t osc){
     unset_flag(n, NOTE_RESET);
     unset_flag(n, NOTE_RELEASE);
   }
-  return s;
 }
