@@ -34,10 +34,10 @@ OSC(granular);
 
 // Globals :)
 cadence_ctx* ctx;
-synth_t* s;
-synth_t* grain_sampler;
-synth_t* test_sampler;
-delay* d;
+synth_t s;
+synth_t grain_sampler;
+synth_t test_sampler;
+delay_t* d;
 butlp_t* butlp;
 
 
@@ -63,11 +63,11 @@ int op = GRAIN;
 // Midi handler called by the platform layer
 MIDI_EVENT(midi_event) {
   if (op == SYNTH) 
-    synth_register_note(s, midi_note, 0.1, event_type);
+    synth_register_note(&s, midi_note, 0.1, event_type);
   if (op == SAMPLER) 
-    synth_register_note(test_sampler, midi_note, 0.1, event_type);
+    synth_register_note(&test_sampler, midi_note, 0.1, event_type);
   if (op == GRAIN) 
-    synth_register_note(grain_sampler, midi_note, 0.1, event_type);
+    synth_register_note(&grain_sampler, midi_note, 0.1, event_type);
 }
 
 
@@ -103,7 +103,7 @@ PROGRAM_LOOP(program_loop) {
   if (!ctx) {
     ctx = cadence_setup(44100);
 
-    s     = new_synth(8, test_osc);
+    new_synth(&s, 8, test_osc);
     d     = new_delay(ctx);
     butlp = new_butlp(ctx, 1000);
 
@@ -111,16 +111,16 @@ PROGRAM_LOOP(program_loop) {
     new_fft(&fft_tst1, 120);
     new_fft(&fft_tst2, 512);
 
-    test_sampler = new_synth(8, sample_player);
-    grain_sampler = new_synth(8, granular);
+    new_synth(&test_sampler, 8, sample_player);
+    new_synth(&grain_sampler, 8, granular);
   }
   
   process_gen_table(ctx);
 
   // Play synths
-  float sample  = play_synth(ctx, s);
-  sample       += play_synth(ctx, test_sampler);
-  sample       += play_synth(ctx, grain_sampler);
+  float sample  = play_synth(ctx, &s);
+  sample       += play_synth(ctx, &test_sampler);
+  sample       += play_synth(ctx, &grain_sampler);
 
   // Apply effects
   float filtered = apply_butlp(ctx, butlp, sample, filter_freq);
@@ -346,15 +346,57 @@ OSC(sample_player) {
   return sample * adsr_curve;
 }
 
+OSC(test_osc) {
+  // Variables global to all notes
+  static int init = 0;
 
+  // oscillators for each note
+  static sine_t sines[8];
+
+  // adsr curve manager per note
+  static adsr_t adsr_arr[8];
+
+  // initialize variables (allocate synths, initialize them, set up release
+  if (!init) {
+    init = 1;
+
+    // set up local oscillators
+    fori(8) new_sine(&sines[i]);
+
+    // set up adsr
+    fori(s->poly_count) set_line(ctx, &adsr_arr[i].atk, 0.05, 0.0, 1.0);
+    fori(s->poly_count) set_line(ctx, &adsr_arr[i].rel, 0.1, 1.0, 0.0);
+  }
+
+  // handle note resets
+  if (check_flag(note, NOTE_RESET)) {
+    unset_flag(note, NOTE_RESET);
+
+    sines[note_index].t = 0;
+    reset_adsr(&adsr_arr[note_index]);
+  }
+
+  // Calculate freq for and set for generator
+  sines[note_index].freq = mtof(note->midi_note);
+  float sample           = gen_sine(ctx, &sines[note_index]);
+
+  // Handle adsr and check if note is finished
+  int release_finished = 0;
+  float adsr_curve = adsr(&adsr_arr[note_index], check_flag(note, NOTE_RELEASE), &release_finished);
+  if (release_finished) set_flag(note, NOTE_FREE);
+
+  return 0.4 * adsr_curve * sample;
+}
+
+/*
 // Test osc to demonstrate polyphony, used by synth
 OSC(test_osc) {
   // Variables global to all notes
   static int init = 0;
 
   // oscillators for each note
-  static sine_t** sines;
-  static phasor_t** phasors;
+  static sine_t[8] sines;
+  static phasor_t[8] phasors;
 
   // index for oscillator in gen table
   static int sine_i;
@@ -367,9 +409,7 @@ OSC(test_osc) {
     init = 1;
 
     // set up local oscillators
-    sines   = malloc(s->poly_count * sizeof(sine_t));
-    phasors = malloc(s->poly_count * sizeof(phasor_t));
-    fori(s->poly_count) sines[i] = new_sine();
+    fori(s->poly_count) new_sine(&sines[i]);
     fori(s->poly_count) phasors[i] = new_phasor();
 
     // set up adsr
@@ -392,24 +432,25 @@ OSC(test_osc) {
   }
 
   // Update phasor
-  phasors[note_index]->freq = 3.0f;
-  float phase = gen_phasor(ctx, phasors[note_index]);
-  note->amp *= 1.0f-phase;
+  phasors[note_index]->freq = mtof(note->midi_note);
+  float phase = 0.7*gen_phasor(ctx, phasors[note_index]);
+  //note->amp *= 1.0f-phase;
 
   // Load global modulation from gen table
   float mod = ctx->gt[sine_i].val;
 
   // Calculate freq for and set for generator
-  sines[note_index]->freq = mtof(note->midi_note);;
+  sines[note_index]->freq = mtof(note->midi_note);
 
   int release_finished = 0;
   float adsr_curve = adsr(&adsr_arr[note_index], check_flag(note, NOTE_RELEASE), &release_finished);
 
   if (release_finished) set_flag(note, NOTE_FREE);
 
-  float sample = 0.2 * adsr_curve * /* mod */ gen_sine(ctx, sines[note_index]);
+  float sample = 0.2 * adsr_curve * phase;//;gen_sine(ctx, sines[note_index]);
   return sample;
 }
+*/
 
 int rand_between(int min, int max) {
   float scale = rand()/(float)RAND_MAX; /* [0, 1.0] */

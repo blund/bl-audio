@@ -11,6 +11,8 @@
 
 #include "nuklear/nuklear.h"
 
+#include "synth.h"
+
 #include "memory.h"
 
 
@@ -21,7 +23,7 @@ typedef PROGRAM_LOOP(program_loop_t);
 #define DRAW_GUI(name) void name(struct nk_context* ctx)
 typedef DRAW_GUI(draw_gui_t);
 
-#define MIDI_EVENT(name) void name(int target, int midi_note, float val, int event_type)
+#define MIDI_EVENT(name) void name(int target, int midi_note, float val, note_event event_type)
 typedef MIDI_EVENT(midi_event_t);
 
 #endif

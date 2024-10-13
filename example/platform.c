@@ -259,7 +259,7 @@ PlatformAudioThread(void* UserData)
 
 void init_midi() {
   // Load midi controller
-  int status = snd_rawmidi_open(&midi_in, NULL, "hw:2,0,1", SND_RAWMIDI_NONBLOCK);
+  int status = snd_rawmidi_open(&midi_in, NULL, "hw:0,0,1", SND_RAWMIDI_NONBLOCK);
   if (status < 0) {
     midi_enabled = 0;
     puts("Note: Not using a midi device");
