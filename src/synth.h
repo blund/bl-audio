@@ -38,7 +38,7 @@ typedef struct synth_t {
   osc_t* osc;
 
   int   poly_count;
-  note_t notes[32];
+  note_t* notes;
 } synth_t;
 
 typedef enum note_event {
@@ -46,7 +46,8 @@ typedef enum note_event {
   NOTE_OFF,
 } note_event;
 
-void   new_synth(synth_t* synth, int poly_count, osc_t* osc);
+synth_t* new_synth(cadence_ctx* ctx, int poly_count, osc_t osc);
+  //void   new_synth(synth_t* synth, int poly_count, osc_t* osc);
 void   synth_register_note(synth_t* s, int midi_note, float amp, note_event event);
 float  play_synth(cadence_ctx* ctx, synth_t* s);
 

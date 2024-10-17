@@ -6,11 +6,12 @@
 
 
 #include "context.h"
-#include "malloc.h"
+#include "extra/alloc.h"
 
-cadence_ctx* cadence_setup(int sample_rate) {
-  cadence_ctx* ctx = malloc(sizeof(cadence_ctx));
+cadence_ctx* cadence_setup(int sample_rate, void* alloc(uint64_t)) {
+  cadence_ctx* ctx = alloc(sizeof(cadence_ctx));
   ctx->sample_rate = sample_rate;
+  ctx->alloc       = alloc;
   gen_table_init(ctx);
 
   return ctx;

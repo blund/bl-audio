@@ -7,8 +7,6 @@
 
 
 #include <stdio.h>
-#include <stdlib.h>
-
 #include <assert.h>
 
 #include "synth.h"
@@ -72,7 +70,9 @@ float play_synth(cadence_ctx* ctx, synth_t* s) {
   return sample;
 }
 
-void new_synth(synth_t* s, int poly_count, osc_t osc){
+synth_t* new_synth(cadence_ctx* ctx, int poly_count, osc_t osc){
+  synth_t* s = ctx->alloc(sizeof(synth_t));
+  s->notes   = ctx->alloc(sizeof(note_t)*poly_count);
   s->poly_count = poly_count;
   s->osc = osc;
 
@@ -83,4 +83,6 @@ void new_synth(synth_t* s, int poly_count, osc_t osc){
     unset_flag(n, NOTE_RESET);
     unset_flag(n, NOTE_RELEASE);
   }
+
+  return s;
 }

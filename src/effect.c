@@ -5,8 +5,7 @@
  *****************************************************************/
 
 
-#include "math.h"
-#include "malloc.h"
+#include <math.h>
 
 #include "effect.h"
 
@@ -42,7 +41,7 @@ static void butlp_set(cadence_ctx* ctx, butlp_t *filter, float cutoff_freq) {
 }
 
 butlp_t* new_butlp(cadence_ctx* ctx, float freq) {
-  butlp_t* filter = malloc(sizeof(butlp_t));
+  butlp_t* filter = ctx->alloc(sizeof(butlp_t));
   butlp_set(ctx, filter, freq);
   return filter;
 }
@@ -67,9 +66,9 @@ float apply_butlp(cadence_ctx* ctx, butlp_t *filter, float input, float cutoff_f
 
 // -- delay --
 delay_t* new_delay(cadence_ctx* ctx) {
-  delay_t* d = (delay_t*)malloc(sizeof(delay_t)); // @NOTE - hardcoded max buffer size
+  delay_t* d = ctx->alloc(sizeof(delay_t));
   d->buf_size = 10*ctx->sample_rate;
-  d->buffer = malloc(d->buf_size * sizeof(float));
+  d->buffer = ctx->alloc(d->buf_size * sizeof(float));
 
   // clear out buffer @NOTE - might be unecessary
   for (int i = 0; i < d->buf_size; i++) {

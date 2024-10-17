@@ -29,7 +29,7 @@ OSC(test_osc) {
   static int init = 0;
 
   // oscillators for each note
-  static sine_t sines[8];
+  static sine_t* sines[8];
 
   // adsr curve manager per note
   static adsr_t adsr_arr[8];
@@ -39,7 +39,7 @@ OSC(test_osc) {
     init = 1;
 
     // set up local oscillators
-    fori(8) new_sine(&sines[i]);
+    fori(8) sines[i] = new_sine(ctx);
 
     // set up adsr
     fori(s->poly_count) set_line(ctx, &adsr_arr[i].atk, 0.05, 0.0, 1.0);
@@ -50,13 +50,13 @@ OSC(test_osc) {
   if (check_flag(note, NOTE_RESET)) {
     unset_flag(note, NOTE_RESET);
 
-    sines[note_index].t = 0;
+    sines[note_index]->t = 0;
     reset_adsr(&adsr_arr[note_index]);
   }
 
   // Calculate freq for and set for generator
-  sines[note_index].freq = mtof(note->midi_note);
-  float sample           = gen_sine(ctx, &sines[note_index]);
+  sines[note_index]->freq = mtof(note->midi_note);
+  float sample           = gen_sine(ctx, sines[note_index]);
 
   // Handle adsr and check if note is finished
   int release_finished = 0;

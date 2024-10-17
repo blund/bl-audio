@@ -12,9 +12,12 @@
 #include "context.h"
 
 // -- sine --
-void new_sine(sine_t* s) {
+sine_t* new_sine(cadence_ctx* ctx) {
+  sine_t* s = (sine_t*)ctx->alloc(sizeof(sine_t));
   s->t = 0;
   s->freq = 0;
+
+  return s;
 }
 
 float gen_sine(cadence_ctx* ctx, sine_t* sine) {
@@ -29,8 +32,8 @@ float gen_sine(cadence_ctx* ctx, sine_t* sine) {
 
 
 // -- phasor --
-phasor_t* new_phasor() {
-  phasor_t* p = (phasor_t*)malloc(sizeof(phasor_t)); // @NOTE - hardcoded max buffer size
+phasor_t* new_phasor(cadence_ctx* ctx) {
+  phasor_t* p = ctx->alloc(sizeof(phasor_t)); // @NOTE - hardcoded max buffer size
   p->value = 0;
   p->freq = 0;
   return p;
@@ -43,12 +46,17 @@ float gen_phasor(cadence_ctx* ctx, phasor_t* p) {
   return p->value;
 }
 
+sampler_t* new_sampler(cadence_ctx* ctx) {
+  return ctx->alloc(sizeof(sampler_t));
+}
+
 int sampler_set_sample(sampler_t* s, char* sample_path) {
   int error;
   stb_vorbis* v = stb_vorbis_open_filename(sample_path, &error, &s->va);
   s->v = v;
   return error;
 }
+
 
 int sampler_length(sampler_t* s) {
   return stb_vorbis_stream_length_in_samples(s->v);
@@ -84,10 +92,10 @@ int register_gen_table(cadence_ctx* ctx, gen_type type) {
       ctx->gt[i].type = type;
       switch(type) {
       case GEN_SINE: {
-	//ctx->gt[i].s = new_sine();
+	ctx->gt[i].s = new_sine(ctx);
       } break;
       case GEN_PHASOR: {
-	ctx->gt[i].p = new_phasor();
+	ctx->gt[i].p = new_phasor(ctx);
       } break;
       default: assert(0);
       }

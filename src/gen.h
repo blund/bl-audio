@@ -20,14 +20,14 @@ typedef struct sine_t {
   double t;
   float freq;
 } sine_t;
-void new_sine(sine_t* s);
+sine_t* new_sine(cadence_ctx* ctx);
 float gen_sine(struct cadence_ctx* ctx, sine_t* sine);
 
 typedef struct phasor_t {
   double value;
   float freq;
 } phasor_t;
-phasor_t* new_phasor();
+phasor_t* new_phasor(cadence_ctx* ctx);
 float gen_phasor(struct cadence_ctx* ctx, phasor_t* p);
 
 typedef struct sampler {
@@ -36,6 +36,7 @@ typedef struct sampler {
   stb_vorbis_info vi;
 } sampler_t;
 
+sampler_t* new_sampler(cadence_ctx* ctx);
 int sampler_set_sample(sampler_t* s, char* sample_path);
 float play_sampler(sampler_t* sr);
 

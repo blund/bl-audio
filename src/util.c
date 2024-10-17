@@ -7,8 +7,6 @@
 
 #include <stdlib.h>
 #include "math.h"
-#include "malloc.h"
-
 #include "cadence.h"
 
 float mtof(int midi) {

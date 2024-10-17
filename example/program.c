@@ -26,6 +26,7 @@
 #include "ui_elements.h"
 
 #include "cadence.h"
+#include "extra/alloc.h"
 
 // Forward declare oscs used by the synths
 OSC(test_osc);
@@ -34,9 +35,9 @@ OSC(granular);
 
 // Globals :)
 cadence_ctx* ctx;
-synth_t s;
-synth_t grain_sampler;
-synth_t test_sampler;
+synth_t* s;
+synth_t* grain_sampler;
+synth_t* test_sampler;
 delay_t* d;
 butlp_t* butlp;
 
@@ -63,11 +64,11 @@ int op = GRAIN;
 // Midi handler called by the platform layer
 MIDI_EVENT(midi_event) {
   if (op == SYNTH) 
-    synth_register_note(&s, midi_note, 0.1, event_type);
+    synth_register_note(s, midi_note, 0.1, event_type);
   if (op == SAMPLER) 
-    synth_register_note(&test_sampler, midi_note, 0.1, event_type);
+    synth_register_note(test_sampler, midi_note, 0.1, event_type);
   if (op == GRAIN) 
-    synth_register_note(&grain_sampler, midi_note, 0.1, event_type);
+    synth_register_note(grain_sampler, midi_note, 0.1, event_type);
 }
 
 
@@ -98,12 +99,23 @@ void high_pass_filter(complex float* buf, int fft_size, float cutoff_frequency, 
 float limit = 0.99;
 float damp   = 0.99;
 float fft_cutoff   = 500.0;
+
+uint64_t mem[1024*1024*4];
+linear_allocator_t al = {
+  .base = mem,
+  .size = 1024*1024*4,
+};
+
+LINALLOC(linalloc) {
+  return _linalloc(&al, size);
+}
+
 // Main program loop, generating samples for the platform layer
 PROGRAM_LOOP(program_loop) {
   if (!ctx) {
-    ctx = cadence_setup(44100);
+    ctx = cadence_setup(44100, linalloc);
 
-    new_synth(&s, 8, test_osc);
+    s = new_synth(ctx, 8, test_osc);
     d     = new_delay(ctx);
     butlp = new_butlp(ctx, 1000);
 
@@ -111,16 +123,16 @@ PROGRAM_LOOP(program_loop) {
     new_fft(&fft_tst1, 120);
     new_fft(&fft_tst2, 512);
 
-    new_synth(&test_sampler, 8, sample_player);
-    new_synth(&grain_sampler, 8, granular);
+    test_sampler = new_synth(ctx, 8, sample_player);
+    grain_sampler = new_synth(ctx, 8, granular);
   }
   
   process_gen_table(ctx);
 
   // Play synths
-  float sample  = play_synth(ctx, &s);
-  sample       += play_synth(ctx, &test_sampler);
-  sample       += play_synth(ctx, &grain_sampler);
+  float sample  = play_synth(ctx, s);
+  sample       += play_synth(ctx, test_sampler);
+  sample       += play_synth(ctx, grain_sampler);
 
   // Apply effects
   float filtered = apply_butlp(ctx, butlp, sample, filter_freq);
@@ -293,16 +305,18 @@ DRAW_GUI(draw_gui) {
 OSC(sample_player) {
   static int init = 0;
 
-  static sampler_t sampler_arr[4];
+  static sampler_t* sampler_arr[4];
   static adsr_t adsr_arr[4];
 
   // Initialize stuff
   if (!init) {
+    fori(4) sampler_arr[i] = new_sampler(ctx);
+
     // Initialize samplers;
-    sampler_set_sample(&sampler_arr[0],"data/bowl1.ogg");
-    sampler_set_sample(&sampler_arr[1],"data/bowl2.ogg");
-    sampler_set_sample(&sampler_arr[2],"data/bowl3.ogg");
-    sampler_set_sample(&sampler_arr[3],"data/bowl4.ogg");
+    sampler_set_sample(sampler_arr[0],"data/bowl1.ogg");
+    sampler_set_sample(sampler_arr[1],"data/bowl2.ogg");
+    sampler_set_sample(sampler_arr[2],"data/bowl3.ogg");
+    sampler_set_sample(sampler_arr[3],"data/bowl4.ogg");
     
     // Initialize adsr curves
     fori(4) {
@@ -331,7 +345,7 @@ OSC(sample_player) {
   // Handle note resets
   if (check_flag(note, NOTE_RESET)) {
     unset_flag(note, NOTE_RESET);
-    stb_vorbis_seek_start(sampler_arr[which].v);
+    stb_vorbis_seek_start(sampler_arr[which]->v);
     reset_adsr(&adsr_arr[which]);
   }
 
@@ -342,7 +356,7 @@ OSC(sample_player) {
 
 
   // Mix and play
-  float sample = play_sampler(&sampler_arr[which]);
+  float sample = play_sampler(sampler_arr[which]);
   return sample * adsr_curve;
 }
 
@@ -351,7 +365,7 @@ OSC(test_osc) {
   static int init = 0;
 
   // oscillators for each note
-  static sine_t sines[8];
+  static sine_t* sines[8];
 
   // adsr curve manager per note
   static adsr_t adsr_arr[8];
@@ -361,7 +375,7 @@ OSC(test_osc) {
     init = 1;
 
     // set up local oscillators
-    fori(8) new_sine(&sines[i]);
+    fori(8) sines[i] = new_sine(ctx);
 
     // set up adsr
     fori(s->poly_count) set_line(ctx, &adsr_arr[i].atk, 0.05, 0.0, 1.0);
@@ -372,13 +386,13 @@ OSC(test_osc) {
   if (check_flag(note, NOTE_RESET)) {
     unset_flag(note, NOTE_RESET);
 
-    sines[note_index].t = 0;
+    sines[note_index]->t = 0;
     reset_adsr(&adsr_arr[note_index]);
   }
 
   // Calculate freq for and set for generator
-  sines[note_index].freq = mtof(note->midi_note);
-  float sample           = gen_sine(ctx, &sines[note_index]);
+  sines[note_index]->freq = mtof(note->midi_note);
+  float sample           = gen_sine(ctx, sines[note_index]);
 
   // Handle adsr and check if note is finished
   int release_finished = 0;
@@ -472,7 +486,7 @@ OSC(granular) {
   
   static int init = 0;
 
-  static sampler_t sampler;
+  static sampler_t* sampler;
   static adsr_t adsr_arr[8];
 
   // Buffer to hold the sample we granulate
@@ -487,7 +501,8 @@ OSC(granular) {
   // Initialize stuff
   if (!init) {
     // Initialize samplers;
-    sampler_set_sample(&sampler, "data/bowl3.ogg");
+    sampler = new_sampler(ctx);
+    sampler_set_sample(sampler, "data/bowl3.ogg");
 
     // Initialize adsr curves
     fori(8) {
@@ -501,9 +516,9 @@ OSC(granular) {
     }
 
     // Fill buffer with selection of samples (here at sample 120000, 44100 samples);
-    sampler_seek(&sampler, 100000);
+    sampler_seek(sampler, 100000);
     fori(44100*2) {
-      buffer[i] = play_sampler(&sampler);
+      buffer[i] = play_sampler(sampler);
     }
 
     init = 1;
