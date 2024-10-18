@@ -28,7 +28,7 @@ typedef struct delay_t {
   uint32_t write_head;
   uint32_t read_offset;
 } delay_t;
-delay_t* new_delay(struct cadence_ctx* ctx);
+delay_t* new_delay(cadence_ctx* ctx, int samples);
 float apply_delay(struct cadence_ctx* ctx, delay_t* d, float sample, float delay_ms, float feedback);
 
 #endif

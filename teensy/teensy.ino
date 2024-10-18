@@ -18,13 +18,11 @@ extern "C" {
 #include <SD.h>
 #include <SPI.h>
 #include <SerialFlash.h>
-#include <Bounce.h>
 
 
 // Create the state, which contains the Cadence context, as well as values that are
 // shared between this platform layer and Cadence
 program_state state;
-
 
 // This is the object that wraps Cadence in Teensy's AudioStream object.
 class AudioCadenceEngine : public AudioStream {
@@ -38,7 +36,15 @@ class AudioCadenceEngine : public AudioStream {
 
     // Generate samples
     for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
-      block->data[i] = program_loop(&state);
+      float sample = 0;
+
+      // Ensure that the context exists before we start playing.
+      // The teensy has a branch predictor, so this should be fine :)
+      if (state.ctx) {
+        sample = program_loop(&state);
+      }
+
+      block->data[i] = sample;
     }
 
     transmit(block);  // Transmit the block to the audio library
@@ -92,13 +98,20 @@ void setup() {
 
   // Turn on sound chip
   sgtl5000_1.enable();
-  sgtl5000_1.volume(1.0);
+  sgtl5000_1.volume(0.4);
  
   // Initialize Cadence (with project sample rate)
   program_setup(&state, AUDIO_SAMPLE_RATE);
 
   // Have a small delay before audio starts playing
-  delay(300);
+  digitalWrite(led_pin, HIGH);
+  delay(30);
+  digitalWrite(led_pin, LOW);
+  delay(80);
+  digitalWrite(led_pin, HIGH);
+  delay(30);
+  digitalWrite(led_pin, LOW);
+  delay(80);
   
 }
 

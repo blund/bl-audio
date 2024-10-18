@@ -3,8 +3,8 @@
 
 typedef struct linear_allocator_t {
   void*    base;
-  uint64_t current_offset;
-  uint64_t size;
+  uint32_t current_offset;
+  uint32_t size;
 
 } linear_allocator_t;
 

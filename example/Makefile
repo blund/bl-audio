@@ -7,9 +7,10 @@ nuklear.o: nuklear.c
 		-c
 
 program: nuklear.o
-	gcc program.c ui_elements.c $(src)/cadence.a nuklear.o \
+	gcc program.c ui_elements.c nuklear.o \
 		-I$(src) -I$(src)/include -Iinclude \
 		-lm \
+		-L./../src -l:cadence.a \
 		-g -fPIC -shared \
 		-o program.so
 	touch program.so.done
@@ -17,9 +18,10 @@ program: nuklear.o
 
 .PHONY: example
 example: nuklear.o
-	gcc platform.c load_lib.c nuklear.o $(src)/cadence.a \
+	gcc platform.c load_lib.c nuklear.o \
 		-I$(src) -I$(src)/include -Iinclude \
 		-lm -lasound -lGLEW -lGL -lGLU -lSDL2 \
+		-L./../src -l:cadence.a \
 		-Wl,-R,'$$ORIGIN'\
 		-ggdb \
 		-o example

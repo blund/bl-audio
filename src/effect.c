@@ -65,9 +65,9 @@ float apply_butlp(cadence_ctx* ctx, butlp_t *filter, float input, float cutoff_f
 }
 
 // -- delay --
-delay_t* new_delay(cadence_ctx* ctx) {
+delay_t* new_delay(cadence_ctx* ctx, int samples) {
   delay_t* d = ctx->alloc(sizeof(delay_t));
-  d->buf_size = 10*ctx->sample_rate;
+  d->buf_size = samples;
   d->buffer = ctx->alloc(d->buf_size * sizeof(float));
 
   // clear out buffer @NOTE - might be unecessary

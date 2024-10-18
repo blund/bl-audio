@@ -26,7 +26,7 @@
 #include "ui_elements.h"
 
 #include "cadence.h"
-#include "extra/alloc.h"
+#include "extra/linalloc.h"
 
 // Forward declare oscs used by the synths
 OSC(test_osc);
@@ -104,6 +104,7 @@ uint64_t mem[1024*1024*4];
 linear_allocator_t al = {
   .base = mem,
   .size = 1024*1024*4,
+  .current_offset = 0,
 };
 
 LINALLOC(linalloc) {
@@ -116,7 +117,7 @@ PROGRAM_LOOP(program_loop) {
     ctx = cadence_setup(44100, linalloc);
 
     s = new_synth(ctx, 8, test_osc);
-    d     = new_delay(ctx);
+    d     = new_delay(ctx, 10*ctx->sample_rate);
     butlp = new_butlp(ctx, 1000);
 
     new_fft(&fft_obj, 1024);
