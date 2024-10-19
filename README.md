@@ -14,7 +14,7 @@ To play, simply use your keyboard!
 
 ![An example program built with SDL2, Nuklear, and Cadence](https://www.lundsaunet.no/images/cadence.png)
 
-*What the example program should look like.*
+*The example program. Built with SDL2, Nuklear and Cadence.*
 
 ## Usage
 Cadence is designed to be embeddable. This means that the core library is not dependent on the platform it is running on. The general design idea is that the user implements platform code for whatever platform they desire, and can use the same Cadence program across any platform. Cadence simply provides utilities, such as oscillators, effects and a polyphony framework, that can be built into any application.
@@ -45,12 +45,10 @@ When these things are installed and sorted, the example program can be compiled 
 
 Here is a video of my Teensy running the example program:
 
-<video width="600" controls>
-  <source src="[http://example.com/path/to/your/video.mp4](https://www.lundsaunet.no/video/cadence-teensy.mp4)" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
 
-*Cadence running the scale from Ocarina of Time on a Teensy with the Audio Cape*
+https://github.com/user-attachments/assets/8af8bb0a-924c-4b65-9270-89031b691841
+
+*The example program for for the Teensy.*
 
 ## Further Work
  - Implement more effects (filters, reverb, distortion, etc)
