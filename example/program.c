@@ -5,6 +5,7 @@
  *****************************************************************/
 
 
+#include "gen.h"
 #include <stdio.h>
 #include <complex.h>
 
@@ -41,7 +42,6 @@ synth_t* test_sampler;
 delay_t* d;
 reverb_t* r;
 butlp_t* butlp;
-
 
 int should_fft = 0;
 
@@ -123,9 +123,13 @@ int sample_counter = 0;
 int control_samples = 44100;
 
 // Main program loop, generating samples for the platform layer
+int mod1;
 PROGRAM_LOOP(program_loop) {
   if (!ctx) {
     ctx = cadence_setup(44100, linalloc);
+
+    mod1 = register_gen_table(ctx, GEN_SINE);
+    ctx->gt[mod1].s->freq = 0.2f;
 
     s = new_synth(ctx, 8, test_osc);
     d     = new_delay(ctx, 10*ctx->sample_rate);
@@ -141,10 +145,6 @@ PROGRAM_LOOP(program_loop) {
     grain_sampler = new_synth(ctx, 8, granular);
   }
 
-  if ((sample_counter % control_samples) == 0) {
-
-  }
-  
   process_gen_table(ctx);
 
   // Play synths
@@ -154,10 +154,11 @@ PROGRAM_LOOP(program_loop) {
 
   // Apply effects
   float filtered = apply_butlp(ctx, butlp, sample, filter_freq);
-  float delay    = apply_delay(ctx, d, filtered, delay_s, feedback/100.0f);
+
+  float d_mod = 0.005f * ctx->gt[mod1].val;
+  float delay    = apply_delay(ctx, d, filtered, delay_s + d_mod, feedback/100.0f);
 
   // Mix together stuff
-
   float mix = sample + delay;
 
   if (should_update_reverb_params) {

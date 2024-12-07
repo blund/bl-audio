@@ -80,8 +80,8 @@ delay_t* new_delay(cadence_ctx* ctx, int samples) {
   return d;
 }
 
-float apply_delay(cadence_ctx* ctx, delay_t* d, float sample, float delay_ms, float feedback) {
-  float read_offset_target = delay_ms * ctx->sample_rate;
+float apply_delay(cadence_ctx* ctx, delay_t* d, float sample, float delay_s, float feedback) {
+  float read_offset_target = delay_s * ctx->sample_rate;
 
   float last_offset = d->read_offset;
 
