@@ -94,6 +94,8 @@ void apply_fft(fft_t* obj, float sample) {
       // On second full buffer onwards, fill the first and second halves of the real buf as well
       fori(obj->size/2) obj->buf[i] = obj->overlap_buf[i];
       fori(obj->size/2) obj->overlap_buf[i] = obj->buf[i+obj->size/2] = obj->in_buf[i];
+
+      bit_reversal(*obj);
       fft(*obj);
 
       // copy to persistent buffer (for stuff like visualization)
@@ -109,6 +111,7 @@ float apply_ifft(fft_t* obj) {
   // If we have a new set of samples ready, convert these
   if (obj->samples_ready) {
     obj->samples_ready = 0;
+    bit_reversal(*obj);
     ifft(*obj);
   }
 
@@ -122,12 +125,11 @@ void multiply_bin(fft_t* obj, int i, float val) {
     obj->buf[i_sym] *= val;
 }
 
-void fft(fft_t signal) {
-  float complex* data = signal.buf;
 
-  //assert(signal.size < INT_MAX);
+void bit_reversal(fft_t signal) {
+  float complex* data = signal.buf;
   int n = (int)signal.size;
-  
+
   // Bit-reversal permutation
   for (int i = 1, j = 0; i < n; i++) {
     int bit = n >> 1;
@@ -141,7 +143,13 @@ void fft(fft_t signal) {
       data[j] = tmp;
     }
   }
+}
 
+void fft(fft_t signal) {
+  float complex* data = signal.buf;
+
+  //assert(signal.size < INT_MAX);
+  int n = (int)signal.size;
   // FFT calculation
   for (int len = 2; len <= n; len <<= 1) {
     float ang = pi2 / (float)len;
@@ -164,6 +172,7 @@ void fft(fft_t signal) {
 }
 
 void ifft(fft_t signal) {
+
   // Step 1: Conjugate the complex numbers
   for (int i = 0; i < signal.size; i++) {
     signal.buf[i] = conjf(signal.buf[i]);

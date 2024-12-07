@@ -7,7 +7,10 @@
 
 #include <math.h>
 
+#include "util.h"
+
 #include "effect.h"
+#include "reverb.h"
 
 // -- butterworth lowpass filter --
 // Helper function to calculate coefficiients
@@ -78,10 +81,24 @@ delay_t* new_delay(cadence_ctx* ctx, int samples) {
 }
 
 float apply_delay(cadence_ctx* ctx, delay_t* d, float sample, float delay_ms, float feedback) {
-  d->read_offset = delay_ms * ctx->sample_rate; // @NOTE - hardcoded samplerate
+  float read_offset_target = delay_ms * ctx->sample_rate;
+
+  float last_offset = d->read_offset;
+
+  d->read_offset = lerp(last_offset, read_offset_target, 8.0f/44100);
+  
+
   // read from delay buffer
-  uint32_t index = (d->write_head - d->read_offset) % d->buf_size;
-  float delayed  = d->buffer[index];
+
+  float index = fabs(fmod((float)d->write_head - d->read_offset, d->buf_size));
+
+  double integral;
+  double fractional = modf(index, &integral);
+
+  float sample_a  = d->buffer[(int)floor(index) % d->buf_size];
+  float sample_b  = d->buffer[(int)ceil(index) % d->buf_size];
+
+  float delayed = sample_a * fractional + sample_b * (1.0f - fractional);
 
   // write back + feedback!
   d->buffer[d->write_head % d->buf_size] = sample + delayed * feedback;
@@ -89,5 +106,33 @@ float apply_delay(cadence_ctx* ctx, delay_t* d, float sample, float delay_ms, fl
   // increment delay
   d->write_head++;
   return delayed;
+}
+
+// -- reverb --
+reverb_t* new_reverb(cadence_ctx* ctx) {
+  reverb_t* r = ctx->alloc(sizeof(reverb_t));
+  reverbInitialize(&r->rb);
+  reverbSetParam(&r->rb, 44100, 0.5, 8.0, 4.0, 18000, 0.05);
+
+  return r;
+}
+
+void set_reverb(cadence_ctx* ctx, reverb_t *r, float wet_percent, float time_s, float room_size_s,
+		float cutoff_hz, float pre_delay_s) {
+  reverbSetParam(&r->rb, 44100, wet_percent, time_s, room_size_s, cutoff_hz, pre_delay_s);
+}
+
+float apply_reverb(cadence_ctx* ctx, reverb_t* r, float sample) {
+  if (r->chunk_idx < 32) {
+    r->chunk[r->chunk_idx] = sample;
+    r->chunk_idx++;
+  }
+
+  if (r->chunk_idx == 32) {
+    r->chunk_idx = 0;
+    Reverb(&r->rb, r->chunk, r->chunk);
+  }
+
+  return r->rb.left_output[r->chunk_idx]; // + r->rb.right_output[r->chunk_idx] ;
 }
 

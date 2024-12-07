@@ -28,7 +28,7 @@ void BuildPrimeTable(char* prime_number_table);
 int FindNearestPrime(char* prime_number_table, int number);
 
 
-#define CHUNK_SIZE				64					// must be power of 2
+#define CHUNK_SIZE				32					// must be power of 2
 #define BIG_DELAY_BUFFER_SIZE	65536				// must be power of 2
 
 typedef struct {

@@ -39,6 +39,7 @@ synth_t* s;
 synth_t* grain_sampler;
 synth_t* test_sampler;
 delay_t* d;
+reverb_t* r;
 butlp_t* butlp;
 
 
@@ -55,6 +56,12 @@ float filter_freq = 400;
 float delay_s = 0.3f;
 float feedback = 45.0f;
 
+int should_update_reverb_params = 0;
+float reverb_mix = 65;
+float reverb_time = 10.0;
+float reverb_room = 3.0;
+float reverb_cutoff = 8000.0f;
+float reverb_pre = 0.03;
 
 // Switch for which synth to play
 enum {SYNTH, SAMPLER, GRAIN};
@@ -111,6 +118,10 @@ LINALLOC(linalloc) {
   return _linalloc(&al, size);
 }
 
+
+int sample_counter = 0;
+int control_samples = 44100;
+
 // Main program loop, generating samples for the platform layer
 PROGRAM_LOOP(program_loop) {
   if (!ctx) {
@@ -120,12 +131,18 @@ PROGRAM_LOOP(program_loop) {
     d     = new_delay(ctx, 10*ctx->sample_rate);
     butlp = new_butlp(ctx, 1000);
 
-    new_fft(&fft_obj, 1024);
+    r = new_reverb(ctx);
+
+    new_fft(&fft_obj, 1024*2);
     new_fft(&fft_tst1, 120);
     new_fft(&fft_tst2, 512);
 
     test_sampler = new_synth(ctx, 8, sample_player);
     grain_sampler = new_synth(ctx, 8, granular);
+  }
+
+  if ((sample_counter % control_samples) == 0) {
+
   }
   
   process_gen_table(ctx);
@@ -141,30 +158,23 @@ PROGRAM_LOOP(program_loop) {
 
   // Mix together stuff
 
-
   float mix = sample + delay;
+
+  if (should_update_reverb_params) {
+    set_reverb(ctx, r, reverb_mix, reverb_time, reverb_room, reverb_cutoff, reverb_pre);
+    should_update_reverb_params = 0;
+  }
+
+  mix = apply_reverb(ctx, r, mix);
 
   if (should_fft) {
 
     //apply_hann_window(fft_obj.in_buf, 512);
     apply_fft(&fft_obj, mix);
 
-    /*
     if (fft_obj.samples_ready) {
-      //high_pass_filter(fft_obj.buf, fft_obj.size, fft_cutoff, 44100);
-
-      fori(fft_obj.size/2) {
-	fft_obj.buf[i] *= 0.7;
-	fft_obj.buf[fft_obj.size-i] *= 0.7;
-	// * (fft_obj.size) / i;
-	//fft_obj.buf[fft_obj.size - i] *= 0.7 * fft_obj.size/2 / i;
-      }
-      fori(8) {
-	fft_obj.buf[100+i] *= 0.0;
-	fft_obj.buf[fft_obj.size-100-i] *= 0.0;
-      }
+      high_pass_filter(fft_obj.buf, fft_obj.size, 1000, 44100);
     }
-    */
 
     mix = apply_ifft(&fft_obj);
   }
@@ -223,23 +233,52 @@ DRAW_GUI(draw_gui) {
     }
   }
 
-  if (nk_begin(ctx, "Cadence", nk_rect(0, 0, 800, 500), NK_WINDOW_TITLE/*|NK_WINDOW_NO_SCROLLBAR*/)) {
+  if (nk_begin(ctx, "Cadence", nk_rect(0, 0, 500, 750), NK_WINDOW_TITLE)) {
 
       // Select what synth to play
-      nk_layout_row_static(ctx, 30, 100, 3);
+      nk_layout_row_dynamic(ctx, 30, 5);
       if (nk_option_label(ctx, "synth",   op == SYNTH)) op = SYNTH;
       if (nk_option_label(ctx, "sampler", op == SAMPLER)) op = SAMPLER;
       if (nk_option_label(ctx, "grain",   op == GRAIN)) op = GRAIN;
 
-      nk_layout_row_static(ctx, 10, 0, 1);
+      nk_spacing(ctx, 1);
+      
+      // Button to recompile (and automatically reload) code :)
+      if (nk_button_label(ctx, "recompile")) {
+	puts(" -- [recompiling program code]");
+	system("make program &");
+      }
 
-      // Delay effect parameters
-      nk_named_lin_slider(ctx, "delay", 0.01, 3, &delay_s);
-      nk_named_lin_slider(ctx, "feedback", 0.1, 100, &feedback);
-      nk_named_log_slider(ctx, "cutoff", 10, 20000, &filter_freq);
+      nk_layout_row_dynamic(ctx, 300, 2);
+      if (nk_group_begin(ctx, "Group 1", NK_WINDOW_BORDER)) {
+        nk_layout_row_dynamic(ctx, 30, 1); // One item per row
+	// Delay effect parameters
+	int res = nk_named_lin_slider(ctx, "reverb_mix", 0.0, 100.0f, &reverb_mix);
+	res |= nk_named_lin_slider(ctx, "reverb_time", 0.0, 100.0f, &reverb_time);
+	res |= nk_named_lin_slider(ctx, "reverb_room", 0.0, 100.0f, &reverb_room);
+	res |= nk_named_lin_slider(ctx, "reverb_cutoff", 0.0, 20000.0f, &reverb_cutoff);
+	res |= nk_named_lin_slider(ctx, "reverb_pre", 0.0, 1.0f, &reverb_pre);
+
+	if (res) {
+	  should_update_reverb_params = 1;
+	}
     
-      nk_layout_row_static(ctx, 10, 0, 1);
+        nk_group_end(ctx);
+      }
+      if (nk_group_begin(ctx, "Group 1", NK_WINDOW_BORDER)) {
+        nk_layout_row_dynamic(ctx, 30, 1); // One item per row
 
+	// Delay effect parameters
+	nk_named_lin_slider(ctx, "delay", 0.01, 3, &delay_s);
+	nk_named_lin_slider(ctx, "feedback", 0.1, 100, &feedback);
+	nk_named_log_slider(ctx, "cutoff", 10, 20000, &filter_freq);
+    
+	nk_layout_row_static(ctx, 10, 0, 1);
+
+
+
+        nk_group_end(ctx);
+      }
       nk_layout_row_static(ctx, 30, 80, 1);
       if (nk_checkbox_label(ctx, "fft", &should_fft)) {
 	if (should_fft)  puts("fft on");
@@ -247,7 +286,7 @@ DRAW_GUI(draw_gui) {
       }
 
       // Define a row layout with 2 columns
-      nk_layout_row_dynamic(ctx, 200, 3);
+      nk_layout_row_dynamic(ctx, 50, 3);
 
       // Column 1: Waveform display
       if (nk_group_begin(ctx, "Waveform Group", NK_WINDOW_NO_SCROLLBAR)) {
@@ -260,8 +299,7 @@ DRAW_GUI(draw_gui) {
       if (sample_index>100) sample_index = 0;
 
       if (should_fft) {
-	nk_layout_row_static(ctx, 60, 200, 1);
-
+	nk_layout_row_dynamic(ctx, 30, 1);
 
 	nk_named_lin_slider(ctx, "limit", 0.0, 1.0, &limit);
 	nk_named_lin_slider(ctx, "damp", 0.0, 1.0, &damp);
@@ -293,12 +331,7 @@ DRAW_GUI(draw_gui) {
 	nk_plot(ctx, NK_CHART_COLUMN, bands, 64, 0);
       }
 
-      // Button to recompile (and automatically reload) code :)
-      nk_layout_row_static(ctx, 30, 80, 1);
-      if (nk_button_label(ctx, "recompile")) {
-	puts(" -- [recompiling program code]");
-	system("make program &");
-      }
+      
     }
 }
 
@@ -400,7 +433,7 @@ OSC(test_osc) {
   float adsr_curve = adsr(&adsr_arr[note_index], check_flag(note, NOTE_RELEASE), &release_finished);
   if (release_finished) set_flag(note, NOTE_FREE);
 
-  return 0.4 * adsr_curve * sample;
+  return 0.2 * adsr_curve * sample;
 }
 
 /*
