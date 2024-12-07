@@ -1,30 +1,67 @@
 # Cadence
-Cadence is an embeddable library for real-time audio processing and synthesis.
-It is intended to be used for developing digital instruments, DAW plugins and audio for game engines.
+A library for real-time audio processing and synthesis.
 
-## Running
-For now the example program only works on linux, depending on [SDL2](https://www.libsdl.org/) and ALSA Audio.
 
-To try the example program, execute:
+## What and why
+Cadence is a small C library that provides the building blocks for audio processing and synthesis. It is intended as a foundation for building digital instruments, audio plugins and audio for game engines. The library is written in portable C code, so that your program can be compiled for any platform, given that you also define the platform interface for it to interact with. So far, the only platform layers are for [SDL2](https://www.libsdl.org/) and the [Teensy](https://www.pjrc.com/store/teensy40.html) microcontroller. 
+
+Cadence currently provides some basic oscillators, effects, midi-support, and a polyphony framework. More utilities will be implemented as I need them :)
+
+The primary motivation for creating Cadence is exploratory programming and having great fun along the way. It is as a lightweight "alternative" to something like [JUCE](https://juce.com/). The goal for Cadence is to have a library that can easily embedded into any project that requires sound.
+
+Please note that this project is very much a work in progress, and is far from mature. Everything is subject to change.
+
+## Running on your PC (Using SDL2)
+### Dependencies
+ - [SDL2](https://www.libsdl.org/) installed (for audio and video)
+ - ALSA libraries (for midi)
+
+Note that the example program only works on Linux for now.
+
+To run the example program, execute the following in the base folder to compile and execute it:
 
     make example
 
-This should open a window running a basic polyphonic synthesizer. To play, use your computer keyboard!
+This should open a window, where you can select between a polyphonic synthesizer, a sampler, and a granular synthesizer. 
+To play, simply use your keyboard!
 
-## Usage
-Cadence is designed to be embeddable. This means that the core library is not dependent on the platform it is running on. The general design idea is that the user implements platform code for whatever platform they desire, and can use the same Cadence program across any platform. Cadence simply provides utilities, such as oscillators, effects and a polyphony framework, that can be built into any application.
+![An example program built with SDL2, Nuklear, and Cadence](https://www.lundsaunet.no/images/cadence.png)
 
-The example program illustrates how to use Cadence. It is structured so that the user program is compiled as a shared library that is loaded by the platform code. 
-The platform code is not aware of Cadence or its inner workings; it only knows about the program's exposed interface, consisting of ```program_loop``` and ```midi_event``` functions. These functions define how the platform code can interact with the Cadence program.
+*The example program. Built with SDL2, Nuklear and Cadence.*
 
-It is important to note that Cadence is agnostic to how this interaction is done. Cadence *can* be tightly integrated into an application, at the cost of portability. 
 
-This project is work in progress, and is created for personal explorations in audio programming.
+## Running on Teensy
+One of the goals of this project is to do sound synthesis on microcontrollers, specifically the [Teensy](https://www.pjrc.com/store/teensy40.html).
+An example program is provided, which implements a simple platform layer for the teensy, as well as some example code.
+
+### Building for Teensy
+A few things are required to run Cadence on the Teensy:
+ - The [Teensy 4.0 Development Board](https://www.pjrc.com/store/teensy40.html)
+ - The [Teensy Audio Adaptor](https://www.pjrc.com/store/teensy3_audio.html)
+ - Installing the [Arduino IDE](https://www.arduino.cc/en/software)
+ - Installing the [Teensyduino](https://www.pjrc.com/teensy/td_download.html) add-on for Arduino
+
+When these things are installed and sorted, the example program can be compiled and ran by running the following:
+
+    cd teensy
+    make
+    make run
+
+
+Here is a video of my Teensy running the example program:
+
+
+https://github.com/user-attachments/assets/8af8bb0a-924c-4b65-9270-89031b691841
+
+*The example program for for the Teensy, featuring the scale from Ocaria of Time.*
 
 ## Further Work
- - Implement more effects (filters, reverb, etc)
- - Establishing APIs
- - Platform code for Teensy, Bela
+ - Implement more effects (filters, reverb, distortion, etc)
+ - Sample playback on the Teensy
+ - Fix fft (currently broken)
+ - Refine APIs
+ - Lua scripting
+ - Platform code for Bela
 
 ## Credits
  - The base for the SDL platform audio code is borrowed from [etscrivner](https://github.com/etscrivner/sdl_audio_circular_buffer)
