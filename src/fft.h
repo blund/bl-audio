@@ -21,7 +21,7 @@ typedef struct fft_t {
   fft_stages stage;
   int samples_ready;
   
-  int  sample_count; // since we receive one sample at a time, we need keep track of when buffers are full
+  int  sample_index; // since we receive one sample at a time, we need keep track of when buffers are full
   f32* in_buf;
 
   f32* overlap_buf; // Used for overlap storage

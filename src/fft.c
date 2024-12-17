@@ -60,8 +60,8 @@ void new_fft(fft_t* obj, int size) {
   obj->size  = size;
 
   // These are used for storing the input before processing
-  obj->overlap_buf  = malloc(obj->size/2*sizeof(f32));
-  obj->in_buf       = malloc(obj->size/2*sizeof(f32));
+  obj->overlap_buf  = malloc(obj->size*sizeof(f32));
+  obj->in_buf       = malloc(obj->size*sizeof(f32));
 
   // This is where the fft is stored after processed
   obj->buf          = malloc(obj->size*sizeof(complex float));
@@ -69,6 +69,7 @@ void new_fft(fft_t* obj, int size) {
 
   obj->stage = FIRST_ITERATION;
   obj->samples_ready = 0;
+  obj->sample_index = 0;
 
   // @NOTE - probabl unecessary
   fori(obj->size) obj->buf[i] = 0;
@@ -78,45 +79,53 @@ void fft(fft_t signal);
 void ifft(fft_t signal);
 
 void apply_fft(fft_t* obj, float sample) {
-  if (obj->sample_count < obj->size/2) {
-    obj->in_buf[obj->sample_count] = sample;
-    obj->sample_count++;
+  // We are still filling up the buffer for processing
+  if (obj->sample_index < obj->size) {
+    obj->in_buf[obj->sample_index] = sample;
+    obj->sample_index++;
   }
 
-  if (obj->sample_count == obj->size/2) {
-    obj->sample_count = 0;
-    if (obj->stage == FIRST_ITERATION) {
-      // On first full buffer, just fill the overlap buf
-      fori(obj->size/2) obj->overlap_buf[i] = obj->in_buf[i];
-      obj->stage = FIRST_ITERATION_DONE; // Used for "apply_ifft"
-    } else {
-      obj->samples_ready = 1;
-      // On second full buffer onwards, fill the first and second halves of the real buf as well
-      fori(obj->size/2) obj->buf[i] = obj->overlap_buf[i];
-      fori(obj->size/2) obj->overlap_buf[i] = obj->buf[i+obj->size/2] = obj->in_buf[i];
+  // The buffer is full. We can perform fft
+  if (obj->sample_index == obj->size) {
 
-      bit_reversal(*obj);
-      fft(*obj);
+    // Notify that apply_ifft can spit out samples;
+    obj->samples_ready = 1;
 
-      // copy to persistent buffer (for stuff like visualization)
-      memcpy(obj->pers, obj->buf, obj->size*sizeof(complex float));
+    // Reset sample index for playback etc
+    obj->sample_index = 0;
+
+    fori(obj->size) {
+      // Store input buffer to processing buffer
+      obj->buf[i] = obj->in_buf[i];
+
+      // Zero pad second half of processing buffer
+      obj->buf[obj->size+i] = 0;
     }
+
+    // Do the magic
+    bit_reversal(*obj);
+    fft(*obj);
   }
 }
 
 float apply_ifft(fft_t* obj) {
-  // Still buffering the first samples before first full window is filled
-  if (obj->stage == FIRST_ITERATION) return 0;
-
-  // If we have a new set of samples ready, convert these
   if (obj->samples_ready) {
     obj->samples_ready = 0;
+
+    // Undo the magic
     bit_reversal(*obj);
     ifft(*obj);
+
+    fori(obj->size) {
+      // Add the old overlap to the first half of the buffer
+      obj->buf[i] += obj->overlap_buf[i];
+
+      // Save the new overlap from the second half
+      obj->overlap_buf[i] = obj->buf[obj->size+i];
+    }
   }
 
-  // return the equivalent of the sample we are writing
-  return creal(obj->buf[obj->sample_count]);
+  return crealf(obj->buf[obj->sample_index]);
 }
 
 void multiply_bin(fft_t* obj, int i, float val) {
@@ -198,10 +207,17 @@ void fft_mul_arrs(fft_t sig, fft_t ir) {
   }
 }
 
-void hann(fft_t sig, int block_size) {
-  for (int i = 0; i < block_size; i++) {
-    const float a0 = 25.0f/46.0f;
-    float multiplier = 0.5f*(1.0f - cosf(pi2*(float)i/2047.0f));
-    sig.buf[i] *= multiplier;
-  }
+float window[1024*32] = {-69};
+
+void generate_hann_window(float* window, int size) {
+    for (int n = 0; n < size; n++) {
+        window[n] = 0.5f * (1.0f - cosf((2.0f * M_PI * n) / (size - 1)));
+    }
+}
+
+void apply_hann_window(float complex* signal, int size) {
+  if (window[0] == -69) generate_hann_window(window, size);
+    for (int i = 0; i < size; i++) {
+        signal[i] *= window[i]; // Element-wise multiplication
+    }
 }
