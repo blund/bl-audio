@@ -65,7 +65,7 @@ float reverb_pre = 0.03;
 
 // Switch for which synth to play
 enum {SYNTH, SAMPLER, GRAIN};
-int op = SYNTH;
+int op = GRAIN;
 
 
 // Midi handler called by the platform layer
@@ -76,19 +76,6 @@ MIDI_EVENT(midi_event) {
     synth_register_note(test_sampler, midi_note, 0.1, event_type);
   if (op == GRAIN) 
     synth_register_note(grain_sampler, midi_note, 0.1, event_type);
-}
-
-
-void test_fft_process(fft_t* obj) {
-  if (!obj->samples_ready) return;
-  float sr   = 44100;
-  float hz_per_bin = sr/obj->size;
-
-  int bins = obj->size/2;
-  
-  fori(bins) {
-    multiply_bin(obj, i, 0.5);
-  }
 }
 
 void high_pass_filter(complex float* buf, int fft_size, float cutoff_frequency, float sample_rate) {
@@ -105,53 +92,11 @@ void high_pass_filter(complex float* buf, int fft_size, float cutoff_frequency, 
 #include <complex.h>
 #include <string.h> // For memcpy and memset
 
-// Function to perform spectral shifting by cents
-void spectral_shift_cents(complex float* buf, int fft_size, float cents) {
-    complex float temp[fft_size]; // Temporary buffer for the shifted spectrum
-    memset(temp, 0, sizeof(temp)); // Clear the buffer
 
-    float shift_factor = powf(2.0f, cents / 1200.0f); // Frequency scaling factor
-
-    int half_size = fft_size / 2;
-
-    // Process positive frequencies [0, N/2]
-    for (int i = 0; i <= half_size; i++) {
-        float original_bin = (float)i; // Original bin index
-        float shifted_bin = original_bin * shift_factor; // Scaled bin index
-
-        int bin_floor = (int)shifted_bin; // Lower integer bin
-        int bin_ceil = bin_floor + 1;    // Upper integer bin
-        float t = shifted_bin - bin_floor; // Fractional part for interpolation
-
-        if (bin_floor < half_size) {
-            // Linear interpolation of magnitude and phase
-            temp[bin_floor] += buf[i] * (1.0f - t);
-            if (bin_ceil < half_size) {
-                temp[bin_ceil] += buf[i] * t;
-            }
-        }
-    }
-
-    // Mirror the negative frequencies for real signals
-    for (int i = 1; i < half_size; i++) {
-        temp[fft_size - i] = conjf(temp[i]);
-    }
-
-    // DC and Nyquist bins remain real-valued
-    temp[0] = buf[0]; // DC component
-    temp[half_size] = buf[half_size]; // Nyquist component
-
-    // Copy the shifted spectrum back to the original buffer
-    memcpy(buf, temp, sizeof(temp));
-}
-
-void apply_spectral_shift(fft_t* fft, float shift) {
-    spectral_shift_cents(fft->buf, fft->size, shift);
-}
 
 float limit = 0.99;
 float damp   = 0.99;
-float fft_shift   = 0.0;
+float pitch_shift_cents   = 0.0;
 
 uint64_t mem[1024*1024*4];
 linear_allocator_t al = {
@@ -183,7 +128,7 @@ PROGRAM_LOOP(program_loop) {
 
     r = new_reverb(ctx);
 
-    new_fft(&fft_obj, 2048);
+    new_fft(&fft_obj, 4096);
 
     test_sampler = new_synth(ctx, 8, sample_player);
     grain_sampler = new_synth(ctx, 8, granular);
@@ -216,7 +161,8 @@ PROGRAM_LOOP(program_loop) {
     apply_fft(&fft_obj, mix);
 
     if (fft_obj.samples_ready) {
-      apply_spectral_shift(&fft_obj, fft_shift);
+      float pitch_shift_factor = powf(2.0f, pitch_shift_cents / 1200.0f); // Frequency scaling factor
+      spectral_shift(&fft_obj, pitch_shift_factor);
     }
 
     mix = apply_ifft(&fft_obj);
@@ -343,7 +289,7 @@ DRAW_GUI(draw_gui) {
 
       if (should_fft) {
 	nk_layout_row_dynamic(ctx, 30, 1);
-	nk_named_lin_slider(ctx, "fft_shift", -1200, 1200.0, &fft_shift);
+	nk_named_lin_slider(ctx, "pitch shift", -1200, 1200.0, &pitch_shift_cents);
 
 	// Display spectrum (fix scaling later)
 	if (fft_obj.stage == FIRST_ITERATION_DONE) {

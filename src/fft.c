@@ -55,6 +55,7 @@ void test_process(fft_t* obj) {
 
 const float pi2 = 6.28318548f;
 
+void bit_reversal(fft_t signal);
 
 void new_fft(fft_t* obj, int size) {
   obj->size  = size;
@@ -220,4 +221,44 @@ void apply_hann_window(float complex* signal, int size) {
     for (int i = 0; i < size; i++) {
         signal[i] *= window[i]; // Element-wise multiplication
     }
+}
+
+/* Effects */
+
+// Function to perform spectral shifting by cents
+void spectral_shift(fft_t* fft, float shift_factor) {
+    complex float temp[fft->size]; // Temporary buffer for the shifted spectrum
+    memset(temp, 0, sizeof(temp)); // Clear the buffer
+
+    int half_size = fft->size / 2;
+
+    // Process positive frequencies [0, N/2]
+    for (int i = 0; i <= half_size; i++) {
+        float original_bin = (float)i; // Original bin index
+        float shifted_bin = original_bin * shift_factor; // Scaled bin index
+
+        int bin_floor = (int)shifted_bin; // Lower integer bin
+        int bin_ceil = bin_floor + 1;    // Upper integer bin
+        float t = shifted_bin - bin_floor; // Fractional part for interpolation
+
+        if (bin_floor < half_size) {
+            // Linear interpolation of magnitude and phase
+            temp[bin_floor] += fft->buf[i] * (1.0f - t);
+            if (bin_ceil < half_size) {
+                temp[bin_ceil] += fft->buf[i] * t;
+            }
+        }
+    }
+
+    // Mirror the negative frequencies for real signals
+    for (int i = 1; i < half_size; i++) {
+        temp[fft->size - i] = conjf(temp[i]);
+    }
+
+    // DC and Nyquist bins remain real-valued
+    temp[0] = fft->buf[0]; // DC component
+    temp[half_size] = fft->buf[half_size]; // Nyquist component
+
+    // Copy the shifted spectrum back to the original buffer
+    memcpy(fft->buf, temp, sizeof(temp));
 }
