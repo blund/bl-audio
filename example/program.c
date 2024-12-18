@@ -128,7 +128,7 @@ PROGRAM_LOOP(program_loop) {
 
     r = new_reverb(ctx);
 
-    new_fft(&fft_obj, 4096);
+    new_fft(&fft_obj, 2048);
 
     test_sampler = new_synth(ctx, 8, sample_player);
     grain_sampler = new_synth(ctx, 8, granular);
@@ -141,11 +141,22 @@ PROGRAM_LOOP(program_loop) {
   sample       += play_synth(ctx, test_sampler);
   sample       += play_synth(ctx, grain_sampler);
 
-  // Apply effects
-  float filtered = apply_butlp(ctx, butlp, sample, filter_freq);
+  if (should_fft) {
+    apply_fft(&fft_obj, sample);
 
-  float d_mod = 0.005f * ctx->gt[mod1].val;
-  float delay    = apply_delay(ctx, d, filtered, delay_s + d_mod, feedback/100.0f);
+    if (fft_obj.samples_ready) {
+      float pitch_shift_factor = powf(2.0f, pitch_shift_cents / 1200.0f); // Frequency scaling factor
+      spectral_shift(&fft_obj, pitch_shift_factor);
+    }
+
+    sample = apply_ifft(&fft_obj);
+  }
+
+  // Delay, with a filter between tap and write
+  float d_mod = 0.004f * ctx->gt[mod1].val;
+  float delay = delay_tap(ctx, d, delay_s + d_mod);
+  delay = apply_butlp(ctx, butlp, delay, filter_freq);
+  delay_write(ctx, d, sample, delay, feedback/100.0f);
 
   // Mix together stuff
   float mix = sample + delay;
@@ -157,16 +168,7 @@ PROGRAM_LOOP(program_loop) {
 
   mix = apply_reverb(ctx, r, mix);
 
-  if (should_fft) {
-    apply_fft(&fft_obj, mix);
 
-    if (fft_obj.samples_ready) {
-      float pitch_shift_factor = powf(2.0f, pitch_shift_cents / 1200.0f); // Frequency scaling factor
-      spectral_shift(&fft_obj, pitch_shift_factor);
-    }
-
-    mix = apply_ifft(&fft_obj);
-  }
 
   // Return as 16 bit int for the platform layer
   return (int16_t)16768*(mix);

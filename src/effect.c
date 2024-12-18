@@ -80,7 +80,7 @@ delay_t* new_delay(cadence_ctx* ctx, int samples) {
   return d;
 }
 
-float apply_delay(cadence_ctx* ctx, delay_t* d, float sample, float delay_s, float feedback) {
+float delay_tap(cadence_ctx* ctx, delay_t* d, float delay_s) {
   float read_offset_target = delay_s * ctx->sample_rate;
 
   float last_offset = d->read_offset;
@@ -98,14 +98,17 @@ float apply_delay(cadence_ctx* ctx, delay_t* d, float sample, float delay_s, flo
   float sample_a  = d->buffer[(int)floor(index) % d->buf_size];
   float sample_b  = d->buffer[(int)ceil(index) % d->buf_size];
 
-  float delayed = sample_a * fractional + sample_b * (1.0f - fractional);
+  d->delayed_sample = sample_a * fractional + sample_b * (1.0f - fractional);
 
+  return d->delayed_sample;
+}
+
+void delay_write(cadence_ctx* ctx, delay_t* d, float sample, float fb_sig, float feedback) {
   // write back + feedback!
-  d->buffer[d->write_head % d->buf_size] = sample + delayed * feedback;
+  d->buffer[d->write_head % d->buf_size] = sample + fb_sig * feedback;
 
   // increment delay
   d->write_head++;
-  return delayed;
 }
 
 // -- reverb --

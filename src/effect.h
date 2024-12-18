@@ -29,9 +29,11 @@ typedef struct delay_t {
   uint32_t write_head;
   float read_offset;
   float last_offset;
+  float delayed_sample;
 } delay_t;
 delay_t* new_delay(cadence_ctx* ctx, int samples);
-float    apply_delay(struct cadence_ctx* ctx, delay_t* d, float sample, float delay_ms, float feedback);
+float delay_tap(cadence_ctx* ctx, delay_t* d, float delay_s);
+void delay_write(cadence_ctx* ctx, delay_t* d, float sample, float fb_sig, float feedback);
 
 typedef struct reverb_t {
   reverbBlock rb;
