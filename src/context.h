@@ -37,6 +37,6 @@ typedef struct cadence_ctx {
 // void mix_tracks(cae_ctx* ctx);
 // void write_to_track(cae_ctx* ctx, int n, int i, float sample);
 
-cadence_ctx* cadence_setup(int sample_rate, void* alloc(uint64_t));
+cadence_ctx* cadence_setup(int sample_rate);
 
 #endif

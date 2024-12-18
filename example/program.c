@@ -118,7 +118,7 @@ int control_samples = 44100;
 int mod1;
 PROGRAM_LOOP(program_loop) {
   if (!ctx) {
-    ctx = cadence_setup(44100, linalloc);
+    ctx = cadence_setup(44100);
 
     mod1 = register_gen_table(ctx, GEN_SINE);
     ctx->gt[mod1].s->freq = 0.5f;
