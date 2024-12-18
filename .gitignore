@@ -1,3 +1,9 @@
+/**/*.a
+/**/*.o
+/**/*.so
+/**/*.done
+
+/example/example
 
 /teensy/build
 /teensy/src
