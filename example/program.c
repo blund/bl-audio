@@ -274,6 +274,7 @@ DRAW_GUI(draw_gui) {
 	if (!should_fft) puts("fft off");
       }
 
+      /*
       // Define a row layout with 2 columns
       nk_layout_row_dynamic(ctx, 50, 3);
 
@@ -286,11 +287,12 @@ DRAW_GUI(draw_gui) {
       }
       sample_index++;
       if (sample_index>100) sample_index = 0;
+      */
 
       if (should_fft) {
-	nk_layout_row_dynamic(ctx, 30, 1);
 	nk_named_lin_slider(ctx, "pitch shift", -1200, 1200.0, &pitch_shift_cents);
 
+	/*
 	// Display spectrum (fix scaling later)
 	if (fft_obj.stage == FIRST_ITERATION_DONE) {
 	  int bins = 256;
@@ -315,6 +317,7 @@ DRAW_GUI(draw_gui) {
 	  }
 	}
 	nk_plot(ctx, NK_CHART_COLUMN, bands, 64, 0);
+	*/
       }
 
       
