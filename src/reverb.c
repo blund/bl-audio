@@ -62,7 +62,7 @@ float apply_reverb(cadence_ctx* ctx, reverb_t* r, float sample) {
  */
 
 #include <math.h>
-#include "rbj-reverb.h"
+#include "reverb.h"
 
 #define MAX_REVERB_TIME			441000
 #define MIN_REVERB_TIME			441
