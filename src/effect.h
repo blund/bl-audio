@@ -45,4 +45,15 @@ void      set_reverb(cadence_ctx* ctx, reverb_t *r, float wet_percent, float tim
 		     float cutoff_hz, float pre_delay_s);
 float     apply_reverb(cadence_ctx *ctx, reverb_t* r, float input);
 
+typedef struct ws_point {
+  float x;
+  float y;
+} ws_point;
+
+typedef struct waveshaper_t {
+  ws_point points[16];
+} waveshaper_t;
+
+float apply_waveshaper(waveshaper_t* w, float a);
+
 #endif

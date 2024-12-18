@@ -42,6 +42,7 @@ synth_t* test_sampler;
 delay_t* d;
 reverb_t* r;
 butlp_t* butlp;
+waveshaper_t w;
 
 int should_fft = 1;
 
@@ -120,7 +121,7 @@ PROGRAM_LOOP(program_loop) {
     ctx = cadence_setup(44100, linalloc);
 
     mod1 = register_gen_table(ctx, GEN_SINE);
-    ctx->gt[mod1].s->freq = 0.2f;
+    ctx->gt[mod1].s->freq = 0.5f;
 
     s = new_synth(ctx, 8, test_osc);
     d     = new_delay(ctx, 10*ctx->sample_rate);
@@ -132,6 +133,12 @@ PROGRAM_LOOP(program_loop) {
 
     test_sampler = new_synth(ctx, 8, sample_player);
     grain_sampler = new_synth(ctx, 8, granular);
+
+    w.points[0] = (ws_point){-1.0, -1.0};
+    w.points[1] = (ws_point){-0.5, -0.2};
+    w.points[2] = (ws_point){0.0,  0.0};
+    w.points[2] = (ws_point){0.5,  0.8};
+    w.points[3] = (ws_point){1.0,  1.0};
   }
 
   process_gen_table(ctx);
@@ -155,6 +162,7 @@ PROGRAM_LOOP(program_loop) {
   // Delay, with a filter between tap and write
   float d_mod = 0.004f * ctx->gt[mod1].val;
   float delay = delay_tap(ctx, d, delay_s + d_mod);
+  delay = apply_waveshaper(&w, delay);
   delay = apply_butlp(ctx, butlp, delay, filter_freq);
   delay_write(ctx, d, sample, delay, feedback/100.0f);
 
@@ -167,8 +175,6 @@ PROGRAM_LOOP(program_loop) {
   }
 
   mix = apply_reverb(ctx, r, mix);
-
-
 
   // Return as 16 bit int for the platform layer
   return (int16_t)16768*(mix);

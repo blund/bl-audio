@@ -1,5 +1,35 @@
 
- /*************************************************************
+#include "effect.h"
+#include "reverb.h"
+
+// -- reverb --
+reverb_t* new_reverb(cadence_ctx* ctx) {
+  reverb_t* r = ctx->alloc(sizeof(reverb_t));
+  reverbInitialize(&r->rb);
+  reverbSetParam(&r->rb, 44100, 0.5, 8.0, 4.0, 18000, 0.05);
+
+  return r;
+}
+
+void set_reverb(cadence_ctx* ctx, reverb_t *r, float wet_percent, float time_s, float room_size_s,
+		float cutoff_hz, float pre_delay_s) {
+  reverbSetParam(&r->rb, 44100, wet_percent, time_s, room_size_s, cutoff_hz, pre_delay_s);
+}
+
+float apply_reverb(cadence_ctx* ctx, reverb_t* r, float sample) {
+  if (r->chunk_idx < 32) {
+    r->chunk[r->chunk_idx] = sample;
+    r->chunk_idx++;
+  }
+
+  if (r->chunk_idx == 32) {
+    r->chunk_idx = 0;
+    Reverb(&r->rb, r->chunk, r->chunk);
+  }
+
+  return r->rb.left_output[r->chunk_idx]; // + r->rb.right_output[r->chunk_idx] ;
+}
+/*************************************************************
  *                                                            *
  *       Basic Jot Reverb                                     *
  *       in generic C code (floating-point version)           *
@@ -31,12 +61,8 @@
  *
  */
 
-
-
 #include <math.h>
-#include "reverb.h"
-
-
+#include "rbj-reverb.h"
 
 #define MAX_REVERB_TIME			441000
 #define MIN_REVERB_TIME			441
