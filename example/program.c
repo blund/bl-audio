@@ -53,15 +53,15 @@ fft_t fft_tst1;
 fft_t fft_tst2;
 
 // Global parameters for GUI
-float filter_freq = 400;
+float filter_freq = 4600;
 float delay_s = 0.3f;
 float feedback = 45.0f;
 
 int should_update_reverb_params = 0;
-float reverb_mix = 65;
-float reverb_time = 10.0;
-float reverb_room = 3.0;
-float reverb_cutoff = 8000.0f;
+float reverb_mix = 35;
+float reverb_time = 15.0;
+float reverb_room = 4.0;
+float reverb_cutoff = 5000.0f;
 float reverb_pre = 0.03;
 
 // Switch for which synth to play
@@ -129,16 +129,23 @@ PROGRAM_LOOP(program_loop) {
 
     r = new_reverb(ctx);
 
-    new_fft(&fft_obj, 2048);
+    new_fft(&fft_obj, 1024);
 
     test_sampler = new_synth(ctx, 8, sample_player);
     grain_sampler = new_synth(ctx, 8, granular);
 
-    w.points[0] = (ws_point){-1.0, -1.0};
-    w.points[1] = (ws_point){-0.5, -0.2};
-    w.points[2] = (ws_point){0.0,  0.0};
-    w.points[2] = (ws_point){0.5,  0.8};
-    w.points[3] = (ws_point){1.0,  1.0};
+    w.points_used = 5;
+
+    w.points[0] = (point){-1.0, -1.0};
+    w.points[1] = (point){-0.5,  -0.5};
+    w.points[2] = (point){0.0,  0.0};
+    w.points[3] = (point){0.5,  0.5};
+    w.points[4] = (point){1.0,  1.0};
+
+    w.curves[0] = 0.0;
+    w.curves[1] = 0.0;
+    w.curves[2] = 0.0;
+    w.curves[3] = 0.0;
   }
 
   process_gen_table(ctx);
@@ -161,8 +168,9 @@ PROGRAM_LOOP(program_loop) {
 
   // Delay, with a filter between tap and write
   float d_mod = 0.004f * ctx->gt[mod1].val;
-  float delay = delay_tap(ctx, d, delay_s + d_mod);
-  delay = apply_waveshaper(&w, delay);
+  float delay = delay_tap(ctx, d, delay_s);
+  float ws = apply_waveshaper(&w, delay);
+  delay = mix(delay, ws, 60);
   delay = apply_butlp(ctx, butlp, delay, filter_freq);
   delay_write(ctx, d, sample, delay, feedback/100.0f);
 
@@ -175,6 +183,8 @@ PROGRAM_LOOP(program_loop) {
   }
 
   mix = apply_reverb(ctx, r, mix);
+
+  mix *= 0.7;
 
   // Return as 16 bit int for the platform layer
   return (int16_t)16768*(mix);
@@ -246,15 +256,15 @@ DRAW_GUI(draw_gui) {
 	system("make program &");
       }
 
-      nk_layout_row_dynamic(ctx, 300, 2);
+      nk_layout_row_dynamic(ctx, 320, 2);
       if (nk_group_begin(ctx, "Group 1", NK_WINDOW_BORDER)) {
         nk_layout_row_dynamic(ctx, 30, 1); // One item per row
-	// Delay effect parameters
-	int res = nk_named_lin_slider(ctx, "reverb_mix", 0.0, 100.0f, &reverb_mix);
-	res |= nk_named_lin_slider(ctx, "reverb_time", 0.0, 100.0f, &reverb_time);
-	res |= nk_named_lin_slider(ctx, "reverb_room", 0.0, 100.0f, &reverb_room);
-	res |= nk_named_lin_slider(ctx, "reverb_cutoff", 0.0, 20000.0f, &reverb_cutoff);
-	res |= nk_named_lin_slider(ctx, "reverb_pre", 0.0, 1.0f, &reverb_pre);
+	nk_label(ctx, "Reverb",NK_TEXT_ALIGN_LEFT);
+	int res = nk_named_lin_slider(ctx, "mix", 0.0, 100.0f, &reverb_mix);
+	res |= nk_named_lin_slider(ctx, "time", 0.0, 30.0f, &reverb_time);
+	res |= nk_named_lin_slider(ctx, "room", 0.0, 30.0f, &reverb_room);
+	res |= nk_named_lin_slider(ctx, "cutoff", 0.0, 20000.0f, &reverb_cutoff);
+	res |= nk_named_lin_slider(ctx, "pre", 0.0, 1.0f, &reverb_pre);
 
 	if (res) {
 	  should_update_reverb_params = 1;
@@ -265,22 +275,33 @@ DRAW_GUI(draw_gui) {
       if (nk_group_begin(ctx, "Group 1", NK_WINDOW_BORDER)) {
         nk_layout_row_dynamic(ctx, 30, 1); // One item per row
 
+	nk_label(ctx, "Delay",NK_TEXT_ALIGN_LEFT);
+
 	// Delay effect parameters
-	nk_named_lin_slider(ctx, "delay", 0.01, 3, &delay_s);
+	nk_named_lin_slider(ctx, "time (s)", 0.01, 3, &delay_s);
 	nk_named_lin_slider(ctx, "feedback", 0.1, 100, &feedback);
 	nk_named_log_slider(ctx, "cutoff", 10, 20000, &filter_freq);
     
-	nk_layout_row_static(ctx, 10, 0, 1);
-
-
-
+	nk_layout_row_dynamic(ctx, 120, 1);
+	draw_waveshaper(ctx, &w);
+	//nk_layout_row_static(ctx, 10, 0, 1);
         nk_group_end(ctx);
       }
-      nk_layout_row_static(ctx, 30, 80, 1);
+
+      nk_layout_row_dynamic(ctx, 30, 1);
+
       if (nk_checkbox_label(ctx, "fft", &should_fft)) {
 	if (should_fft)  puts("fft on");
 	if (!should_fft) puts("fft off");
       }
+
+      nk_named_lin_slider(ctx, "pitch shift", -1200, 1200.0, &pitch_shift_cents);
+      // Draw the points as small circles
+      //nk_fill_circle(canvas, nk_rect(p2.x - 2, p2.y - 2, 5, 5), nk_rgb(0, 255, 0));
+
+      //nk_fill_circle(canvas, nk_rect(p1.x - 2, p1.y - 2, 5, 5), nk_rgb(0, 255, 0));
+      //nk_fill_circle(canvas, nk_rect(pc.x - 2, pc.y - 2, 5, 5), nk_rgb(0, 0, 255));
+
 
       /*
       // Define a row layout with 2 columns
@@ -298,7 +319,7 @@ DRAW_GUI(draw_gui) {
       */
 
       if (should_fft) {
-	nk_named_lin_slider(ctx, "pitch shift", -1200, 1200.0, &pitch_shift_cents);
+	//nk_named_lin_slider(ctx, "pitch shift", -1200, 1200.0, &pitch_shift_cents);
 
 	/*
 	// Display spectrum (fix scaling later)

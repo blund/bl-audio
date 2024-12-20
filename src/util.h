@@ -37,4 +37,13 @@ typedef struct adsr_t {
 void reset_adsr(adsr_t* l);
 float adsr(adsr_t* adsr, int trig_rel, int* done);
 
+typedef struct point {
+  float x;
+  float y;
+} point;
+
+point bezier(point p1, point p2, float curvature, float t);
+
+float mix(float a, float b, float mix);
+
 #endif

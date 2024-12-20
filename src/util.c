@@ -7,7 +7,9 @@
 
 #include <stdlib.h>
 #include "math.h"
+
 #include "cadence.h"
+#include "utils.h"
 
 float mtof(int midi) {
   return 440.0f*pow(2, (float)(midi-69.0f) / 12.0f);
@@ -71,4 +73,21 @@ float adsr(adsr_t* adsr, int trig_rel, int* done) {
   return val;
 }
 
+// Bezier interpolation between two points with curvature
+point bezier(point p1, point p2, float curvature, float t) {
+    // Control point based on curvature
+    point pc;
+    pc.x = (p1.x + p2.x) / 2.0f + curvature * (p2.y - p1.y) / 2.0f;
+    pc.y = (p1.y + p2.y) / 2.0f + curvature * (p1.x - p2.x) / 2.0f;
 
+    point result;
+    result.x = (1 - t) * (1 - t) * p1.x + 2 * (1 - t) * t * pc.x + t * t * p2.x;
+    result.y = (1 - t) * (1 - t) * p1.y + 2 * (1 - t) * t * pc.y + t * t * p2.y;
+
+    return result;
+
+}
+
+float mix(float a, float b, float mix) {
+  return (mix/100 * a) + ((100.0f-mix)/100*b);
+}

@@ -11,6 +11,7 @@
 
 #include "context.h"
 #include "reverb.h"
+#include "util.h"
 
 typedef struct butlp_t {
   float cutoff_freq;
@@ -45,15 +46,13 @@ void      set_reverb(cadence_ctx* ctx, reverb_t *r, float wet_percent, float tim
 		     float cutoff_hz, float pre_delay_s);
 float     apply_reverb(cadence_ctx *ctx, reverb_t* r, float input);
 
-typedef struct ws_point {
-  float x;
-  float y;
-} ws_point;
-
 typedef struct waveshaper_t {
-  ws_point points[16];
+  int   points_used;
+  point points[16];
+  float curves[15];
 } waveshaper_t;
 
 float apply_waveshaper(waveshaper_t* w, float a);
-
+void waveshaper_del_point(waveshaper_t* w, int index);
+void waveshaper_add_point(waveshaper_t* w, point p);
 #endif
