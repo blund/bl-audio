@@ -1,6 +1,7 @@
 
 #include <math.h>
-#include "../effect.h"
+
+#include "effect.h"
 
 // -- butterworth lowpass filter --
 // Helper function to calculate coefficiients

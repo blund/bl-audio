@@ -1,7 +1,8 @@
 
 #include <math.h>
-#include "../util.h"
-#include "../effect.h"
+
+#include "util.h"
+#include "effect.h"
 
 // -- delay --
 delay_t* new_delay(cadence_ctx* ctx, int samples) {
