@@ -14,9 +14,10 @@ Please note that this project is very much a work in progress, and is far from m
 ### What currently works?
 
 - Oscillators (sine, phasor)
-- Basic effects (reverb, delay, low-pass fitler)
+- Basic effects (reverb, delay, low-pass fitler, waveshaper)
 - Spectral processing (pitch shifter)
 - Interactive GUI example on Linux (powered by [Nuklear](https://github.com/Immediate-Mode-UI/Nuklear))
+  - Including waveshaper editor!
 - Teensy platform layer (see video below!)
 
 ## Running
@@ -34,7 +35,7 @@ To run the example program, execute the following in the base folder to compile 
 This should open a window, where you can select between a polyphonic synthesizer, a sampler, and a granular synthesizer. 
 To play, simply use your keyboard!
 
-![An example program built with SDL2, Nuklear, and Cadence](https://github.com/user-attachments/assets/36b352b8-e910-4b14-a2e5-ab5f9f8670c5)
+![An example program built with SDL2, Nuklear, and Cadence](https://github.com/user-attachments/assets/4511b770-00da-4e62-8ec8-d689d893eb4d)
 
 *The example program. Built with SDL2, Nuklear and Cadence.*
 
