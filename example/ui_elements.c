@@ -236,7 +236,16 @@ void draw_waveshaper(struct nk_context *ctx, waveshaper_t* ws) {
   struct nk_input *input = &ctx->input;
   struct nk_vec2 mouse = {input->mouse.pos.x, input->mouse.pos.y};
 
+  
+  // Check if we are hovering a point
+  fori(ws->points_used) {
+    struct nk_rect point_rect = nk_rect(points[i].x - 6, points[i].y - 6, 12, 12);
+    if (nk_input_is_mouse_hovering_rect(input, point_rect)) {
+      nk_fill_circle(canvas, nk_rect(points[i].x-4, points[i].y-4, 8, 8), nk_rgb(255, 255/3, 0));
+    }
+  }
 
+  // If the button is not down, skip the rest of the procedure
   if(!nk_input_is_mouse_down(input, NK_BUTTON_LEFT)) {
     wss.which = -1;
     wss.is_held = 0;
@@ -244,14 +253,14 @@ void draw_waveshaper(struct nk_context *ctx, waveshaper_t* ws) {
     return;
   }
 
+  // If the buttun was held last frame skip latching
   if (wss.is_held) goto held;
   
-  // 1 - check if we are hovering or clicking a point
+  // Check if we are holding a new point
   fori(ws->points_used) {
     wss.is_held = 0;
-    struct nk_rect point_rect = nk_rect(points[i].x - 4, points[i].y - 4, 8, 8);
+    struct nk_rect point_rect = nk_rect(points[i].x - 6, points[i].y - 6, 12, 12);
     if (nk_input_is_mouse_hovering_rect(input, point_rect)) {
-      nk_fill_circle(canvas, nk_rect(points[i].x-4, points[i].y-4, 8, 8), nk_rgb(255, 255/3, 0));
       if(nk_input_is_mouse_down(input, NK_BUTTON_LEFT)) {
 	wss.is_held = 1;
 	wss.which = i;
@@ -261,7 +270,7 @@ void draw_waveshaper(struct nk_context *ctx, waveshaper_t* ws) {
   }
 
  held:
-  // 2 - Check if we should create or delete a point
+  // Check if we should add or delete a point
   int i = wss.which;
   if(wss.was_low && rect_contains(b, mouse)) {
     wss.was_low = 0;
@@ -288,11 +297,10 @@ void draw_waveshaper(struct nk_context *ctx, waveshaper_t* ws) {
   }
 
 
-  // 3 Draw the held point and edit its position
-  // Ensure that we have a point to deal with
   if (i == -1) return;
 
-  nk_fill_circle(canvas, nk_rect(points[i].x-4, points[i].y-4, 8, 8), nk_rgb(255, 255/3, 0));
+  // Modify the held point
+  nk_fill_circle(canvas, nk_rect(points[i].x-5, points[i].y-5, 11, 11), nk_rgb(255, 255/3, 0));
 
   if (i < ws->points_used-1 && mouse.x >= points[i+1].x) {
     mouse.x = points[i+1].x;

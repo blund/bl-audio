@@ -11,7 +11,9 @@
 
 #include "context.h"
 float mtof(int midi);
+
 float lerp(float a, float b, float t);
+float clamp(float min, float max, float x);
 
 float rand_float(float min, float max);
 int rand_int(int min, int max);

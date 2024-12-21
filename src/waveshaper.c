@@ -17,8 +17,7 @@ float apply_waveshaper(waveshaper_t* w, float x) {
       point p0 = w->points[i];
       point p1 = w->points[i+1];
 
-      //float curvature = w->curves[i];
-
+      float curvature = w->curves[i];
       float t = (x - p0.x) / (p1.x - p0.x);
 
       point result;
@@ -29,10 +28,13 @@ float apply_waveshaper(waveshaper_t* w, float x) {
   return 0;
 }
 
-void init_waveshaper(waveshaper_t* w) {
-  w->points_used = 0;
-  w->points[0] = (point){-1, -1};
-  w->points[1] = (point){1, 1};
+waveshaper_t* new_waveshaper(cadence_ctx* ctx) {
+  waveshaper_t* ws = ctx->alloc(sizeof(waveshaper_t));
+  ws->points_used = 2;
+  ws->points[0] = (point){-1, -1};
+  ws->points[1] = (point){1, 1};
+
+  return ws;
 }
 
 void waveshaper_add_point(waveshaper_t* w, point p) {

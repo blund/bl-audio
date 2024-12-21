@@ -42,7 +42,8 @@ synth_t* test_sampler;
 delay_t* d;
 reverb_t* r;
 butlp_t* butlp;
-waveshaper_t w;
+waveshaper_t* ws;
+env_follower_t* ef;
 
 int should_fft = 1;
 
@@ -123,6 +124,8 @@ PROGRAM_LOOP(program_loop) {
     mod1 = register_gen_table(ctx, GEN_SINE);
     ctx->gt[mod1].s->freq = 0.5f;
 
+    ef = new_env_follower(ctx, 0.01f, 0.1f);
+    
     s = new_synth(ctx, 8, test_osc);
     d     = new_delay(ctx, 10*ctx->sample_rate);
     butlp = new_butlp(ctx, 1000);
@@ -134,18 +137,8 @@ PROGRAM_LOOP(program_loop) {
     test_sampler = new_synth(ctx, 8, sample_player);
     grain_sampler = new_synth(ctx, 8, granular);
 
-    w.points_used = 5;
-
-    w.points[0] = (point){-1.0, -1.0};
-    w.points[1] = (point){-0.5,  -0.5};
-    w.points[2] = (point){0.0,  0.0};
-    w.points[3] = (point){0.5,  0.5};
-    w.points[4] = (point){1.0,  1.0};
-
-    w.curves[0] = 0.0;
-    w.curves[1] = 0.0;
-    w.curves[2] = 0.0;
-    w.curves[3] = 0.0;
+    ws = new_waveshaper(ctx);
+    waveshaper_add_point(ws, (point){0.0, 0.0});
   }
 
   process_gen_table(ctx);
@@ -154,6 +147,12 @@ PROGRAM_LOOP(program_loop) {
   float sample  = play_synth(ctx, s);
   sample       += play_synth(ctx, test_sampler);
   sample       += play_synth(ctx, grain_sampler);
+
+
+
+  
+  float env = apply_env_follower(ef, sample);
+  env = tanh(env);
 
   if (should_fft) {
     apply_fft(&fft_obj, sample);
@@ -166,17 +165,28 @@ PROGRAM_LOOP(program_loop) {
     sample = apply_ifft(&fft_obj);
   }
 
+  feedback = 80-30*env;
+  //filter_freq = 4500-1000*env;
+  
   // Delay, with a filter between tap and write
   float d_mod = 0.004f * ctx->gt[mod1].val;
   float delay = delay_tap(ctx, d, delay_s);
-  float ws = apply_waveshaper(&w, delay);
-  delay = mix(delay, ws, 60);
+  //delay = mix(delay, ws, 60);
   delay = apply_butlp(ctx, butlp, delay, filter_freq);
   delay_write(ctx, d, sample, delay, feedback/100.0f);
 
+  delay *= 1-0.8*env;
+
+  ws->points[0].y = -clamp(0, 1, (0.8+env));
+  ws->points[2].y = clamp(0, 1, (0.7+env));
+  
   // Mix together stuff
   float mix = sample + delay;
 
+  mix = apply_waveshaper(ws, mix);
+ 
+
+  reverb_time = 20*(1-env);
   if (should_update_reverb_params) {
     set_reverb(ctx, r, reverb_mix, reverb_time, reverb_room, reverb_cutoff, reverb_pre);
     should_update_reverb_params = 0;
@@ -283,7 +293,7 @@ DRAW_GUI(draw_gui) {
 	nk_named_log_slider(ctx, "cutoff", 10, 20000, &filter_freq);
     
 	nk_layout_row_dynamic(ctx, 120, 1);
-	draw_waveshaper(ctx, &w);
+	draw_waveshaper(ctx, ws);
 	//nk_layout_row_static(ctx, 10, 0, 1);
         nk_group_end(ctx);
       }

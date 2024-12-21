@@ -19,6 +19,10 @@ float lerp(float a, float b, float t) {
     return a + (b - a) * t;
 }
 
+float clamp(float min, float max, float x) {
+  return fmax(min, fmin(max, x));
+}
+
 int rand_int(int min, int max) {
   float scale = rand()/(float)RAND_MAX; /* [0, 1.0] */
   return (int)min+scale*(max-min);      /* [min, max] */

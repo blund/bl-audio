@@ -1,6 +1,6 @@
 
 src = context.c gen.c synth.c util.c fft.c midi.c \
-	reverb.c delay.c waveshaper.c filter.c \
+	reverb.c delay.c waveshaper.c filter.c env_follower.c \
 	extra/linalloc.c include/stb/stb_vorbis.c
 
 objs = $(patsubst %.c, %.o, $(notdir $(src)))

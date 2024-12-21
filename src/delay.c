@@ -22,7 +22,7 @@ float delay_tap(cadence_ctx* ctx, delay_t* d, float delay_s) {
 
   float last_offset = d->read_offset;
 
-  d->read_offset = lerp(last_offset, read_offset_target, 8.0f/44100);
+  d->read_offset = lerp(last_offset, read_offset_target, 8.0f/ctx->sample_rate);
   
 
   // read from delay buffer

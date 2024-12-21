@@ -32,6 +32,7 @@ typedef struct delay_t {
   float last_offset;
   float delayed_sample;
 } delay_t;
+
 delay_t* new_delay(cadence_ctx* ctx, int samples);
 float delay_tap(cadence_ctx* ctx, delay_t* d, float delay_s);
 void delay_write(cadence_ctx* ctx, delay_t* d, float sample, float fb_sig, float feedback);
@@ -52,7 +53,20 @@ typedef struct waveshaper_t {
   float curves[15];
 } waveshaper_t;
 
+waveshaper_t* new_waveshaper(cadence_ctx* ctx);;
 float apply_waveshaper(waveshaper_t* w, float a);
 void waveshaper_del_point(waveshaper_t* w, int index);
 void waveshaper_add_point(waveshaper_t* w, point p);
+
+
+typedef struct {
+    float attack;     // Attack time constant in seconds
+    float release;    // Release time constant in seconds
+    float sample_rate; // Sampling rate in Hz
+    float envelope;   // Current logarithmic envelope value (in dB)
+} env_follower_t;
+
+env_follower_t* new_env_follower(cadence_ctx* ctx, float attack, float release);
+float apply_env_follower(env_follower_t* ef, float input);
+
 #endif
