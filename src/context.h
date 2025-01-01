@@ -11,9 +11,6 @@
 
 #include "gen.h"
 
-// Helper for for loops :)
-#define fori(lim) for(int i = 0; i < (lim); i++)
-
 // #define num_tracks 4
 // #define track_size 256
 // #define channels_pr_track 2

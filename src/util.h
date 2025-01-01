@@ -10,6 +10,10 @@
 #define CADENCE_UTIL_H
 
 #include "context.h"
+
+// Helper for for loops :)
+#define fori(lim) for(int i = 0; i < (lim); i++)
+
 float mtof(int midi);
 
 float lerp(float a, float b, float t);

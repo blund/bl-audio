@@ -9,6 +9,7 @@
 #include <stdio.h>
 
 #include "synth.h"
+#include "util.h"
 
 
 // Helper functions to deal with flags

@@ -10,6 +10,7 @@
 
 #include "gen.h"
 #include "context.h"
+#include "util.h"
 
 // -- sine --
 sine_t* new_sine(cadence_ctx* ctx) {

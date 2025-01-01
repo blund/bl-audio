@@ -42,16 +42,11 @@ void test_process(fft_t* obj) {
 #include <math.h>
 #include <assert.h>
 #include <limits.h>
-#include <complex.h>
 #include <string.h>
 
 #include "fft.h"
+#include "util.h"
 
-#define i16 int16_t
-#define i64 int64_t
-#define f32 float
-
-#define fori(end) for (int i = 0; i < end; i++)
 
 const float pi2 = 6.28318548f;
 
@@ -65,15 +60,14 @@ void new_fft(fft_t* obj, int size) {
   obj->in_buf       = malloc(obj->size*sizeof(f32));
 
   // This is where the fft is stored after processed
-  obj->buf          = malloc(obj->size*sizeof(complex float));
-  obj->pers         = malloc(obj->size*sizeof(complex float));
+  obj->buf          = malloc(obj->size*sizeof(c32));
+  obj->pers         = malloc(obj->size*sizeof(c32));
 
-  obj->stage = FIRST_ITERATION;
   obj->samples_ready = 0;
   obj->sample_index = 0;
 
   // @NOTE - probabl unecessary
-  fori(obj->size) obj->buf[i] = 0;
+  fori(obj->size) obj->buf[i] = (c32){0,0};
 }
 
 void fft(fft_t signal);
@@ -97,10 +91,10 @@ void apply_fft(fft_t* obj, float sample) {
 
     fori(obj->size) {
       // Store input buffer to processing buffer
-      obj->buf[i] = obj->in_buf[i];
+      obj->buf[i] = ftoc(obj->in_buf[i]);
 
       // Zero pad second half of processing buffer
-      obj->buf[obj->size+i] = 0;
+      obj->buf[obj->size+i] = ftoc(0);
     }
 
     // Do the magic
@@ -119,25 +113,27 @@ float apply_ifft(fft_t* obj) {
 
     fori(obj->size) {
       // Add the old overlap to the first half of the buffer
-      obj->buf[i] += obj->overlap_buf[i];
+      obj->buf[i] = c32add(obj->buf[i], ftoc(obj->overlap_buf[i]));
 
       // Save the new overlap from the second half
-      obj->overlap_buf[i] = obj->buf[obj->size+i];
+      obj->overlap_buf[i] = obj->buf[obj->size+i].real;
     }
   }
 
-  return crealf(obj->buf[obj->sample_index]);
+  return obj->buf[obj->sample_index].real;
 }
 
+/*
 void multiply_bin(fft_t* obj, int i, float val) {
     int i_sym = obj->size-i;
     obj->buf[i]     *= val;
     obj->buf[i_sym] *= val;
 }
+*/
 
 
 void bit_reversal(fft_t signal) {
-  float complex* data = signal.buf;
+  c32* data = signal.buf;
   int n = (int)signal.size;
 
   // Bit-reversal permutation
@@ -148,7 +144,7 @@ void bit_reversal(fft_t signal) {
     j ^= bit;
 
     if (i < j) {
-      float complex tmp = data[i];
+      c32 tmp = data[i];
       data[i] = data[j];
       data[j] = tmp;
     }
@@ -156,26 +152,27 @@ void bit_reversal(fft_t signal) {
 }
 
 void fft(fft_t signal) {
-  float complex* data = signal.buf;
+  c32* data = signal.buf;
 
   //assert(signal.size < INT_MAX);
   int n = (int)signal.size;
   // FFT calculation
   for (int len = 2; len <= n; len <<= 1) {
     float ang = pi2 / (float)len;
-    float complex wlen = cosf(ang) + sinf(ang) * I;  // wlen = e^(-i * 2 * pi / len)
+    c32 wlen = (c32){.real = cosf(ang),
+		     .imag = sinf(ang)};  // wlen = e^(-i * 2 * pi / len)
 
     for (int i = 0; i < n; i += len) {
-      float complex w = 1.0f + 0.0f * I;
+      c32 w = ftoc(1.0);
       
       for (int j = 0; j < len / 2; j++) {
-        float complex u = data[i + j];
-        float complex v = data[i + j + len / 2] * w;
+        c32 u = data[i + j];
+        c32 v = c32mul(data[i + j + len / 2], w);
 
-        data[i + j] = u + v;
-        data[i + j + len / 2] = u - v;
+        data[i + j] = c32add(u, v);
+        data[i + j + len / 2] = c32min(u, v);
 
-        w *= wlen;  // Update w for next element
+        w = c32mul(w, wlen);  // Update w for next element
       }
     }
   }
@@ -185,7 +182,7 @@ void ifft(fft_t signal) {
 
   // Step 1: Conjugate the complex numbers
   for (int i = 0; i < signal.size; i++) {
-    signal.buf[i] = conjf(signal.buf[i]);
+    signal.buf[i] = c32conj(signal.buf[i]);
   }
 
   // Step 2: Apply the FFT
@@ -193,10 +190,11 @@ void ifft(fft_t signal) {
 
   // Step 3: Conjugate the complex numbers again and divide by the size
   for (int i = 0; i < signal.size; i++) {
-    signal.buf[i] = conjf(signal.buf[i]) / (float)signal.size;
+    signal.buf[i] = c32mul_scalar(c32conj(signal.buf[i]), 1.0f/signal.size);
   }
 }
 
+/*
 void fft_mul_arrs(fft_t sig, fft_t ir) {
   f32 tmp_real;
   f32 tmp_imag;
@@ -207,7 +205,9 @@ void fft_mul_arrs(fft_t sig, fft_t ir) {
     sig.buf[i] *= ir.buf[i];
   }
 }
+*/
 
+/*
 float window[1024*32] = {-69};
 
 void generate_hann_window(float* window, int size) {
@@ -222,12 +222,13 @@ void apply_hann_window(float complex* signal, int size) {
         signal[i] *= window[i]; // Element-wise multiplication
     }
 }
+*/
 
 /* Effects */
 
 // Function to perform spectral shifting by cents
 void spectral_shift(fft_t* fft, float shift_factor) {
-    complex float temp[fft->size]; // Temporary buffer for the shifted spectrum
+    c32 temp[fft->size]; // Temporary buffer for the shifted spectrum
     memset(temp, 0, sizeof(temp)); // Clear the buffer
 
     int half_size = fft->size / 2;
@@ -243,16 +244,16 @@ void spectral_shift(fft_t* fft, float shift_factor) {
 
         if (bin_floor < half_size) {
             // Linear interpolation of magnitude and phase
-            temp[bin_floor] += fft->buf[i] * (1.0f - t);
+	  c32pluseq(&temp[bin_floor], c32mul_scalar(fft->buf[i], (1.0f - t)));
             if (bin_ceil < half_size) {
-                temp[bin_ceil] += fft->buf[i] * t;
+	      c32pluseq(&temp[bin_ceil], c32mul_scalar(fft->buf[i], t));
             }
         }
     }
 
     // Mirror the negative frequencies for real signals
     for (int i = 1; i < half_size; i++) {
-        temp[fft->size - i] = conjf(temp[i]);
+        temp[fft->size - i] = c32conj(temp[i]);
     }
 
     // DC and Nyquist bins remain real-valued
