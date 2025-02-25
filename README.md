@@ -1,13 +1,12 @@
-# Cadence
+# BL Audio
 A library for real-time audio processing and synthesis.
 
 
 ## What is this project?
-Cadence is a small C library that provides the building blocks for audio processing and synthesis. It is intended as a foundation for building digital instruments, audio plugins and audio for game engines. The library is written in portable C code, so that your program can be compiled for any platform, given that you also define the platform interface for it to interact with. So far, the only platform layers are for [SDL2](https://www.libsdl.org/) and the [Teensy](https://www.pjrc.com/store/teensy40.html) microcontroller. 
+BL Audio is a small C library that provides the building blocks for audio processing and synthesis. It is intended as a foundation for building digital instruments, audio plugins and audio for game engines. The library is written in portable C code, so that your program can be compiled for any platform, given that you also define the platform interface for it to interact with. So far, the only platform layers are for [SDL2](https://www.libsdl.org/) and the [Teensy](https://www.pjrc.com/store/teensy40.html) microcontroller. 
+BL Audio currently provides some basic oscillators, effects, midi-support, and a polyphony framework. More utilities will be implemented as I need them :)
 
-Cadence currently provides some basic oscillators, effects, midi-support, and a polyphony framework. More utilities will be implemented as I need them :)
-
-The primary motivation for creating Cadence is exploratory programming and having great fun along the way. It is as a lightweight "alternative" to something like [JUCE](https://juce.com/). The goal for Cadence is to have a library that can easily embedded into any project that requires sound.
+The primary motivation for creating BL Audio is exploratory programming and having great fun along the way. It is as a lightweight "alternative" to something like [JUCE](https://juce.com/). The goal for BL Audio is to have a library that can easily embedded into any project that requires sound.
 
 Please note that this project is very much a work in progress, and is far from mature. Everything is subject to change.
 
